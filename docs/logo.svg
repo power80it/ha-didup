@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+<defs><linearGradient id="g4" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#5b21b6"/><stop offset="1" stop-color="#8b5cf6"/></linearGradient></defs>
+<rect width="256" height="256" rx="56" fill="url(#g4)"/><path d="M128,92 C104,76 70,76 48,86 V188 C70,178 104,178 128,194 C152,178 186,178 208,188 V86 C186,76 152,76 128,92 Z" fill="#ffffff"/>
+<line x1="128" y1="96" x2="128" y2="192" stroke="#c4b5fd" stroke-width="5"/>
+<rect x="66" y="108" width="44" height="6" rx="3" fill="#ddd6fe"/><rect x="66" y="126" width="38" height="6" rx="3" fill="#ddd6fe"/><rect x="66" y="144" width="44" height="6" rx="3" fill="#ddd6fe"/><rect x="146" y="108" width="44" height="6" rx="3" fill="#ddd6fe"/><rect x="146" y="126" width="38" height="6" rx="3" fill="#ddd6fe"/><rect x="146" y="144" width="44" height="6" rx="3" fill="#ddd6fe"/>
+<g transform="translate(192,64)"><path d="M0,-30 c-16,0 -22,12 -22,26 v12 l-8,10 h60 l-8,-10 v-12 c0,-14 -6,-26 -22,-26 z" fill="#fbbf24" stroke="#ffffff" stroke-width="6"/><circle cx="0" cy="26" r="7" fill="#fbbf24" stroke="#ffffff" stroke-width="4"/><circle cx="18" cy="-26" r="12" fill="#ef4444" stroke="#ffffff" stroke-width="5"/></g></svg>
