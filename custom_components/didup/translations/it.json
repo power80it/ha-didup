@@ -1,0 +1,249 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "DidUP Famiglia (Argo)",
+        "description": "Inserisci le credenziali del genitore (le stesse dell'app DidUP Famiglia).",
+        "data": {
+          "codice_scuola": "Codice scuola",
+          "utente": "Utente",
+          "password": "Password"
+        }
+      },
+      "opzioni": {
+        "title": "Cosa vuoi attivare?",
+        "data": {
+          "alunni": "Alunni da seguire",
+          "funzioni": "Funzioni",
+          "intervallo_minuti": "Controllo ogni (minuti)",
+          "includi_compiti_di_oggi": "Includi i compiti con consegna oggi"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Password non più valida",
+        "description": "Argo ha rifiutato la password di {utente}. Inseriscila di nuovo (finché non lo fai, l'integrazione non riprova, per non bloccare l'account).",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Credenziali rifiutate da Argo",
+      "cannot_connect": "Impossibile contattare Argo",
+      "unknown": "Errore imprevisto"
+    },
+    "abort": {
+      "already_configured": "Questo account è già configurato",
+      "reauth_successful": "Password aggiornata"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "Opzioni DidUP",
+        "data": {
+          "alunni": "Alunni da seguire",
+          "funzioni": "Funzioni",
+          "intervallo_minuti": "Controllo ogni (minuti)",
+          "includi_compiti_di_oggi": "Includi i compiti con consegna oggi"
+        }
+      }
+    }
+  },
+  "selector": {
+    "funzioni": {
+      "options": {
+        "compiti": "Compiti (sensore)",
+        "promemoria": "Promemoria e verifiche (sensore)",
+        "voti": "Voti (ultimo voto)",
+        "medie": "Media generale",
+        "note": "Note disciplinari",
+        "bacheca": "Comunicazioni della scuola",
+        "calendario": "Calendario (compiti e verifiche)",
+        "eventi": "Eventi per le automazioni (nuovo voto, compito, ...)"
+      }
+    },
+    "sezioni_report": {
+      "options": {
+        "compiti": "Compiti",
+        "promemoria": "Promemoria e verifiche",
+        "voti": "Voti",
+        "note": "Note disciplinari",
+        "comunicazioni": "Comunicazioni della scuola"
+      }
+    },
+    "giorni_settimana": {
+      "options": {
+        "mon": "Lunedì",
+        "tue": "Martedì",
+        "wed": "Mercoledì",
+        "thu": "Giovedì",
+        "fri": "Venerdì",
+        "sat": "Sabato",
+        "sun": "Domenica"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "compiti": {
+        "name": "Compiti"
+      },
+      "promemoria": {
+        "name": "Promemoria"
+      },
+      "note_disciplinari": {
+        "name": "Note disciplinari"
+      },
+      "comunicazioni": {
+        "name": "Comunicazioni"
+      },
+      "ultimo_voto": {
+        "name": "Ultimo voto"
+      },
+      "media_generale": {
+        "name": "Media generale"
+      }
+    },
+    "calendar": {
+      "calendario": {
+        "name": "Calendario"
+      }
+    },
+    "event": {
+      "novita": {
+        "name": "Novità",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "nuovo_voto": "Nuovo voto",
+              "nuovo_compito": "Nuovo compito",
+              "nuovo_promemoria": "Nuovo promemoria",
+              "nuova_nota": "Nuova nota",
+              "nuova_comunicazione": "Nuova comunicazione"
+            }
+          }
+        }
+      }
+    },
+    "button": {
+      "genera_report": {
+        "name": "Genera PDF"
+      },
+      "aggiorna": {
+        "name": "Aggiorna da Argo"
+      }
+    },
+    "time": {
+      "ora_mon": {
+        "name": "Ora lunedì"
+      },
+      "ora_tue": {
+        "name": "Ora martedì"
+      },
+      "ora_wed": {
+        "name": "Ora mercoledì"
+      },
+      "ora_thu": {
+        "name": "Ora giovedì"
+      },
+      "ora_fri": {
+        "name": "Ora venerdì"
+      },
+      "ora_sat": {
+        "name": "Ora sabato"
+      },
+      "ora_sun": {
+        "name": "Ora domenica"
+      }
+    },
+    "switch": {
+      "automatico_report": {
+        "name": "Generazione automatica"
+      },
+      "attivo_mon": {
+        "name": "Genera di lunedì"
+      },
+      "attivo_tue": {
+        "name": "Genera di martedì"
+      },
+      "attivo_wed": {
+        "name": "Genera di mercoledì"
+      },
+      "attivo_thu": {
+        "name": "Genera di giovedì"
+      },
+      "attivo_fri": {
+        "name": "Genera di venerdì"
+      },
+      "attivo_sat": {
+        "name": "Genera di sabato"
+      },
+      "attivo_sun": {
+        "name": "Genera di domenica"
+      }
+    }
+  },
+  "config_subentries": {
+    "report": {
+      "entry_type": "Report PDF",
+      "initiate_flow": {
+        "user": "Aggiungi report PDF",
+        "reconfigure": "Modifica report"
+      },
+      "step": {
+        "user": {
+          "title": "Nuovo report PDF",
+          "data": {
+            "nome": "Nome del report",
+            "alunni": "Alunni",
+            "sezioni": "Cosa stampare",
+            "max_pagine": "Numero massimo di pagine per ogni PDF",
+            "cartella": "Cartella di salvataggio",
+            "nome_file": "Nome del file ({report}, {alunno}, {data}, {ora})",
+            "automatico": "Genera automaticamente",
+            "ora": "Ora predefinita (per i giorni senza un orario proprio)",
+            "giorni": "Giorni",
+            "unisci_alunni": "Un solo PDF per gli alunni con gli stessi compiti"
+          },
+          "data_description": {
+            "max_pagine": "Limite rigido: se il contenuto non ci sta, gli elementi in più non vengono stampati (e il PDF lo indica).",
+            "cartella": "Proposta: una sottocartella di /config/www con nome casuale, già autorizzata da Home Assistant. ATTENZIONE: /config/www è PUBBLICA (i file sono raggiungibili da /local/… senza login da chi conosce l'indirizzo) e i PDF contengono dati dei ragazzi: il nome casuale rende l'indirizzo difficile da indovinare, ma non lo protegge. Per una cartella privata usane un'altra, esistente e autorizzata in allowlist_external_dirs (vedi README).",
+            "nome_file": "Viene generato un PDF per ogni alunno. Se manca {alunno} viene aggiunto in coda al nome. Senza {data} il file viene sovrascritto a ogni generazione.",
+            "unisci_alunni": "Alunni della stessa classe con compiti, promemoria e comunicazioni identici finiscono nello stesso PDF, con i nomi di tutti. Voti e note restano separati per alunno."
+          }
+        },
+        "reconfigure": {
+          "title": "Modifica report PDF",
+          "data": {
+            "nome": "Nome del report",
+            "alunni": "Alunni",
+            "sezioni": "Cosa stampare",
+            "max_pagine": "Numero massimo di pagine per ogni PDF",
+            "cartella": "Cartella di salvataggio",
+            "nome_file": "Nome del file ({report}, {alunno}, {data}, {ora})",
+            "automatico": "Genera automaticamente",
+            "ora": "Ora predefinita (per i giorni senza un orario proprio)",
+            "giorni": "Giorni",
+            "unisci_alunni": "Un solo PDF per gli alunni con gli stessi compiti"
+          },
+          "data_description": {
+            "max_pagine": "Limite rigido: se il contenuto non ci sta, gli elementi in più non vengono stampati (e il PDF lo indica).",
+            "cartella": "Proposta: una sottocartella di /config/www con nome casuale, già autorizzata da Home Assistant. ATTENZIONE: /config/www è PUBBLICA (i file sono raggiungibili da /local/… senza login da chi conosce l'indirizzo) e i PDF contengono dati dei ragazzi: il nome casuale rende l'indirizzo difficile da indovinare, ma non lo protegge. Per una cartella privata usane un'altra, esistente e autorizzata in allowlist_external_dirs (vedi README).",
+            "nome_file": "Viene generato un PDF per ogni alunno. Se manca {alunno} viene aggiunto in coda al nome. Senza {data} il file viene sovrascritto a ogni generazione.",
+            "unisci_alunni": "Alunni della stessa classe con compiti, promemoria e comunicazioni identici finiscono nello stesso PDF, con i nomi di tutti. Voti e note restano separati per alunno."
+          }
+        }
+      },
+      "error": {
+        "nome_vuoto": "Inserisci un nome",
+        "scelta_vuota": "Scegli almeno un elemento",
+        "cartella_non_consentita": "Cartella non consentita da Home Assistant: usa una sottocartella di /config/www oppure autorizza la tua in allowlist_external_dirs (vedi README)",
+        "cartella_non_scrivibile": "Impossibile scrivere nella cartella"
+      },
+      "abort": {
+        "reconfigure_successful": "Report aggiornato"
+      }
+    }
+  }
+}
