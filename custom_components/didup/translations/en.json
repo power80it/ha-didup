@@ -1,0 +1,249 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "DidUP Famiglia (Argo)",
+        "description": "Enter the parent's credentials (same as the DidUP Famiglia app).",
+        "data": {
+          "codice_scuola": "School code",
+          "utente": "Username",
+          "password": "Password"
+        }
+      },
+      "opzioni": {
+        "title": "What do you want to enable?",
+        "data": {
+          "alunni": "Students",
+          "funzioni": "Features",
+          "intervallo_minuti": "Check every (minutes)",
+          "includi_compiti_di_oggi": "Include homework due today"
+        }
+      },
+      "reauth_confirm": {
+        "title": "Password no longer valid",
+        "description": "Argo rejected the password of {utente}. Enter it again (until then the integration does not retry, to avoid locking the account).",
+        "data": {
+          "password": "Password"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "Credentials rejected by Argo",
+      "cannot_connect": "Cannot reach Argo",
+      "unknown": "Unexpected error"
+    },
+    "abort": {
+      "already_configured": "This account is already configured",
+      "reauth_successful": "Password updated"
+    }
+  },
+  "options": {
+    "step": {
+      "init": {
+        "title": "DidUP options",
+        "data": {
+          "alunni": "Students",
+          "funzioni": "Features",
+          "intervallo_minuti": "Check every (minutes)",
+          "includi_compiti_di_oggi": "Include homework due today"
+        }
+      }
+    }
+  },
+  "selector": {
+    "funzioni": {
+      "options": {
+        "compiti": "Homework (sensor)",
+        "promemoria": "Reminders and tests (sensor)",
+        "voti": "Grades (latest grade)",
+        "medie": "Overall average",
+        "note": "Disciplinary notes",
+        "bacheca": "School notices",
+        "calendario": "Calendar (homework and tests)",
+        "eventi": "Events for automations (new grade, homework, ...)"
+      }
+    },
+    "sezioni_report": {
+      "options": {
+        "compiti": "Homework",
+        "promemoria": "Reminders and tests",
+        "voti": "Grades",
+        "note": "Disciplinary notes",
+        "comunicazioni": "School notices"
+      }
+    },
+    "giorni_settimana": {
+      "options": {
+        "mon": "Monday",
+        "tue": "Tuesday",
+        "wed": "Wednesday",
+        "thu": "Thursday",
+        "fri": "Friday",
+        "sat": "Saturday",
+        "sun": "Sunday"
+      }
+    }
+  },
+  "entity": {
+    "sensor": {
+      "compiti": {
+        "name": "Homework"
+      },
+      "promemoria": {
+        "name": "Reminders"
+      },
+      "note_disciplinari": {
+        "name": "Disciplinary notes"
+      },
+      "comunicazioni": {
+        "name": "Notices"
+      },
+      "ultimo_voto": {
+        "name": "Latest grade"
+      },
+      "media_generale": {
+        "name": "Overall average"
+      }
+    },
+    "calendar": {
+      "calendario": {
+        "name": "Calendar"
+      }
+    },
+    "event": {
+      "novita": {
+        "name": "News",
+        "state_attributes": {
+          "event_type": {
+            "state": {
+              "nuovo_voto": "New grade",
+              "nuovo_compito": "New homework",
+              "nuovo_promemoria": "New reminder",
+              "nuova_nota": "New note",
+              "nuova_comunicazione": "New notice"
+            }
+          }
+        }
+      }
+    },
+    "button": {
+      "genera_report": {
+        "name": "Generate PDF"
+      },
+      "aggiorna": {
+        "name": "Refresh from Argo"
+      }
+    },
+    "time": {
+      "ora_mon": {
+        "name": "Time Monday"
+      },
+      "ora_tue": {
+        "name": "Time Tuesday"
+      },
+      "ora_wed": {
+        "name": "Time Wednesday"
+      },
+      "ora_thu": {
+        "name": "Time Thursday"
+      },
+      "ora_fri": {
+        "name": "Time Friday"
+      },
+      "ora_sat": {
+        "name": "Time Saturday"
+      },
+      "ora_sun": {
+        "name": "Time Sunday"
+      }
+    },
+    "switch": {
+      "automatico_report": {
+        "name": "Automatic generation"
+      },
+      "attivo_mon": {
+        "name": "Generate on Monday"
+      },
+      "attivo_tue": {
+        "name": "Generate on Tuesday"
+      },
+      "attivo_wed": {
+        "name": "Generate on Wednesday"
+      },
+      "attivo_thu": {
+        "name": "Generate on Thursday"
+      },
+      "attivo_fri": {
+        "name": "Generate on Friday"
+      },
+      "attivo_sat": {
+        "name": "Generate on Saturday"
+      },
+      "attivo_sun": {
+        "name": "Generate on Sunday"
+      }
+    }
+  },
+  "config_subentries": {
+    "report": {
+      "entry_type": "PDF report",
+      "initiate_flow": {
+        "user": "Add PDF report",
+        "reconfigure": "Edit report"
+      },
+      "step": {
+        "user": {
+          "title": "New PDF report",
+          "data": {
+            "nome": "Report name",
+            "alunni": "Students",
+            "sezioni": "What to print",
+            "max_pagine": "Maximum pages per PDF",
+            "cartella": "Save folder",
+            "nome_file": "File name ({report}, {alunno}, {data}, {ora})",
+            "automatico": "Generate automatically",
+            "ora": "Default time (for days without their own time)",
+            "giorni": "Days",
+            "unisci_alunni": "One PDF for students with the same homework"
+          },
+          "data_description": {
+            "max_pagine": "Hard limit: if the content does not fit, extra items are not printed (and the PDF says so).",
+            "cartella": "Suggested: a randomly named subfolder of /config/www, already allowed by Home Assistant. WARNING: /config/www is PUBLIC (files are reachable at /local/… without login by anyone who knows the address) and the PDFs contain students' data: the random name makes the address hard to guess, but does not protect it. For a private folder use another existing folder allowed in allowlist_external_dirs (see README).",
+            "nome_file": "One PDF is generated per student. If {alunno} is missing it is appended. Without {data} the file is overwritten each time.",
+            "unisci_alunni": "Students in the same class with identical homework, reminders and notices share one PDF, with all their names. Grades and notes stay separate per student."
+          }
+        },
+        "reconfigure": {
+          "title": "Edit PDF report",
+          "data": {
+            "nome": "Report name",
+            "alunni": "Students",
+            "sezioni": "What to print",
+            "max_pagine": "Maximum pages per PDF",
+            "cartella": "Save folder",
+            "nome_file": "File name ({report}, {alunno}, {data}, {ora})",
+            "automatico": "Generate automatically",
+            "ora": "Default time (for days without their own time)",
+            "giorni": "Days",
+            "unisci_alunni": "One PDF for students with the same homework"
+          },
+          "data_description": {
+            "max_pagine": "Hard limit: if the content does not fit, extra items are not printed (and the PDF says so).",
+            "cartella": "Suggested: a randomly named subfolder of /config/www, already allowed by Home Assistant. WARNING: /config/www is PUBLIC (files are reachable at /local/… without login by anyone who knows the address) and the PDFs contain students' data: the random name makes the address hard to guess, but does not protect it. For a private folder use another existing folder allowed in allowlist_external_dirs (see README).",
+            "nome_file": "One PDF is generated per student. If {alunno} is missing it is appended. Without {data} the file is overwritten each time.",
+            "unisci_alunni": "Students in the same class with identical homework, reminders and notices share one PDF, with all their names. Grades and notes stay separate per student."
+          }
+        }
+      },
+      "error": {
+        "nome_vuoto": "Enter a name",
+        "scelta_vuota": "Choose at least one item",
+        "cartella_non_consentita": "Folder not allowed by Home Assistant: use a subfolder of /config/www or allow yours in allowlist_external_dirs (see README)",
+        "cartella_non_scrivibile": "Cannot write to the folder"
+      },
+      "abort": {
+        "reconfigure_successful": "Report updated"
+      }
+    }
+  }
+}
