@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.1
+- Controlli automatici HACS senza eccezioni (richiesto per l'inserimento nel negozio ufficiale); il marchio è incluso in `custom_components/didup/brand`.
+
 ## 0.4.0 — prima versione pubblica
 - Sensori per alunno (compiti, promemoria/verifiche, ultimo voto, media, note, comunicazioni), calendario, entità evento per le automazioni, pulsante «Aggiorna da Argo».
 - Card Lovelace `custom:didup-card` (riepilogo, compiti, promemoria, voti, note, comunicazioni, programma PDF) con editor visivo.
