@@ -17,7 +17,6 @@ jobs:
       - uses: hacs/action@main
         with:
           category: integration
-          ignore: brands  # il marchio è incluso in custom_components/didup/brand
   tests:
     runs-on: ubuntu-latest
     steps:
