@@ -103,6 +103,9 @@
       },
       "media_generale": {
         "name": "Overall average"
+      },
+      "ultimo_aggiornamento": {
+        "name": "Last update"
       }
     },
     "calendar": {
