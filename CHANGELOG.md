@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.2
+- Nuovo sensore «Ultimo aggiornamento» (orario dell'ultima lettura riuscita da Argo, sia periodica sia manuale): lo stato del pulsante «Aggiorna da Argo» mostra solo l'ultima pressione.
+
 ## 0.4.1
 - Controlli automatici HACS senza eccezioni (richiesto per l'inserimento nel negozio ufficiale); il marchio è incluso in `custom_components/didup/brand`.
 
