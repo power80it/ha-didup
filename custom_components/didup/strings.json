@@ -103,6 +103,9 @@
       },
       "media_generale": {
         "name": "Media generale"
+      },
+      "ultimo_aggiornamento": {
+        "name": "Ultimo aggiornamento"
       }
     },
     "calendar": {
