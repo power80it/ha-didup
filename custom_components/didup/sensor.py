@@ -3,15 +3,16 @@ from __future__ import annotations
 
 from typing import Any
 
-from homeassistant.components.sensor import SensorEntity, SensorStateClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
+from homeassistant.helpers.device_registry import DeviceInfo
 
-from .const import F_BACHECA, F_COMPITI, F_MEDIE, F_NOTE, F_PROMEMORIA, F_VOTI
+from .const import DOMAIN, F_BACHECA, F_COMPITI, F_MEDIE, F_NOTE, F_PROMEMORIA, F_VOTI
 from .entity import DidupEntity, alunni_attivi
 
 
 async def async_setup_entry(hass, entry, async_add_entities) -> None:
     c = entry.runtime_data
-    ents: list[SensorEntity] = []
+    ents: list[SensorEntity] = [UltimoAggiornamentoSensor(c, entry)]
     for s in alunni_attivi(c):
         if F_COMPITI in c.funzioni:
             ents.append(ListaSensor(c, s, "compiti", "compiti", "mdi:notebook-edit", "compiti"))
@@ -88,3 +89,26 @@ class MediaSensor(DidupEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         return {"tipo": "media_generale"}
+
+
+class UltimoAggiornamentoSensor(SensorEntity):
+    """Quando Argo è stato letto con successo l'ultima volta (aggiornamento periodico o manuale)."""
+
+    _attr_has_entity_name = True
+    _attr_translation_key = "ultimo_aggiornamento"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+    _attr_icon = "mdi:clock-check-outline"
+    _attr_should_poll = False
+
+    def __init__(self, coordinator, entry) -> None:
+        self._c = coordinator
+        self._attr_unique_id = f"{entry.entry_id}_ultimo_aggiornamento"
+        self._attr_device_info = DeviceInfo(identifiers={(DOMAIN, entry.entry_id)}, name=entry.title,
+                                            manufacturer="Argo Software", model="DidUP Famiglia")
+
+    async def async_added_to_hass(self) -> None:
+        self.async_on_remove(self._c.async_add_listener(self.async_write_ha_state))
+
+    @property
+    def native_value(self):
+        return self._c.ultimo_ok
