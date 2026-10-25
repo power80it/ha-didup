@@ -211,7 +211,7 @@
           },
           "data_description": {
             "max_pagine": "Hard limit: if the content does not fit, extra items are not printed (and the PDF says so).",
-            "cartella": "Suggested: a randomly named subfolder of /config/www, already allowed by Home Assistant. WARNING: /config/www is PUBLIC (files are reachable at /local/… without login by anyone who knows the address) and the PDFs contain students' data: the random name makes the address hard to guess, but does not protect it. For a private folder use another existing folder allowed in allowlist_external_dirs (see README).",
+            "cartella": "Private folder where the PDFs are saved (suggested: didup_report next to your configuration). It must already exist and be listed under allowlist_external_dirs in configuration.yaml (see README). Do not use /config/www: it is public and the PDFs contain children's data.",
             "nome_file": "One PDF is generated per student. If {alunno} is missing it is appended. Without {data} the file is overwritten each time.",
             "unisci_alunni": "Students in the same class with identical homework, reminders and notices share one PDF, with all their names. Grades and notes stay separate per student."
           }
@@ -232,7 +232,7 @@
           },
           "data_description": {
             "max_pagine": "Hard limit: if the content does not fit, extra items are not printed (and the PDF says so).",
-            "cartella": "Suggested: a randomly named subfolder of /config/www, already allowed by Home Assistant. WARNING: /config/www is PUBLIC (files are reachable at /local/… without login by anyone who knows the address) and the PDFs contain students' data: the random name makes the address hard to guess, but does not protect it. For a private folder use another existing folder allowed in allowlist_external_dirs (see README).",
+            "cartella": "Private folder where the PDFs are saved (suggested: didup_report next to your configuration). It must already exist and be listed under allowlist_external_dirs in configuration.yaml (see README). Do not use /config/www: it is public and the PDFs contain children's data.",
             "nome_file": "One PDF is generated per student. If {alunno} is missing it is appended. Without {data} the file is overwritten each time.",
             "unisci_alunni": "Students in the same class with identical homework, reminders and notices share one PDF, with all their names. Grades and notes stay separate per student."
           }
@@ -241,7 +241,7 @@
       "error": {
         "nome_vuoto": "Enter a name",
         "scelta_vuota": "Choose at least one item",
-        "cartella_non_consentita": "Folder not allowed by Home Assistant: use a subfolder of /config/www or allow yours in allowlist_external_dirs (see README)",
+        "cartella_non_consentita": "Folder not allowed by Home Assistant: create the folder, add it to allowlist_external_dirs in configuration.yaml, then reload the core configuration (see README)",
         "cartella_non_scrivibile": "Cannot write to the folder"
       },
       "abort": {
