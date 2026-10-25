@@ -211,7 +211,7 @@
           },
           "data_description": {
             "max_pagine": "Limite rigido: se il contenuto non ci sta, gli elementi in più non vengono stampati (e il PDF lo indica).",
-            "cartella": "Proposta: una sottocartella di /config/www con nome casuale, già autorizzata da Home Assistant. ATTENZIONE: /config/www è PUBBLICA (i file sono raggiungibili da /local/… senza login da chi conosce l'indirizzo) e i PDF contengono dati dei ragazzi: il nome casuale rende l'indirizzo difficile da indovinare, ma non lo protegge. Per una cartella privata usane un'altra, esistente e autorizzata in allowlist_external_dirs (vedi README).",
+            "cartella": "Cartella privata dove salvare i PDF (proposta: didup_report accanto alla configurazione). Deve esistere già ed essere elencata in allowlist_external_dirs di configuration.yaml (vedi README). Non usare /config/www: è pubblica e i PDF contengono dati dei ragazzi.",
             "nome_file": "Viene generato un PDF per ogni alunno. Se manca {alunno} viene aggiunto in coda al nome. Senza {data} il file viene sovrascritto a ogni generazione.",
             "unisci_alunni": "Alunni della stessa classe con compiti, promemoria e comunicazioni identici finiscono nello stesso PDF, con i nomi di tutti. Voti e note restano separati per alunno."
           }
@@ -232,7 +232,7 @@
           },
           "data_description": {
             "max_pagine": "Limite rigido: se il contenuto non ci sta, gli elementi in più non vengono stampati (e il PDF lo indica).",
-            "cartella": "Proposta: una sottocartella di /config/www con nome casuale, già autorizzata da Home Assistant. ATTENZIONE: /config/www è PUBBLICA (i file sono raggiungibili da /local/… senza login da chi conosce l'indirizzo) e i PDF contengono dati dei ragazzi: il nome casuale rende l'indirizzo difficile da indovinare, ma non lo protegge. Per una cartella privata usane un'altra, esistente e autorizzata in allowlist_external_dirs (vedi README).",
+            "cartella": "Cartella privata dove salvare i PDF (proposta: didup_report accanto alla configurazione). Deve esistere già ed essere elencata in allowlist_external_dirs di configuration.yaml (vedi README). Non usare /config/www: è pubblica e i PDF contengono dati dei ragazzi.",
             "nome_file": "Viene generato un PDF per ogni alunno. Se manca {alunno} viene aggiunto in coda al nome. Senza {data} il file viene sovrascritto a ogni generazione.",
             "unisci_alunni": "Alunni della stessa classe con compiti, promemoria e comunicazioni identici finiscono nello stesso PDF, con i nomi di tutti. Voti e note restano separati per alunno."
           }
@@ -241,7 +241,7 @@
       "error": {
         "nome_vuoto": "Inserisci un nome",
         "scelta_vuota": "Scegli almeno un elemento",
-        "cartella_non_consentita": "Cartella non consentita da Home Assistant: usa una sottocartella di /config/www oppure autorizza la tua in allowlist_external_dirs (vedi README)",
+        "cartella_non_consentita": "Cartella non consentita da Home Assistant: crea la cartella e aggiungila a allowlist_external_dirs in configuration.yaml, poi ricarica la configurazione di base (vedi README)",
         "cartella_non_scrivibile": "Impossibile scrivere nella cartella"
       },
       "abort": {
