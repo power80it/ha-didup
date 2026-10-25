@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.4.3
+- Privacy: la cartella proposta per i PDF non è più dentro `/config/www` (pubblica, senza login) ma `/config/didup_report`, da autorizzare con `allowlist_external_dirs`; tolto ogni suggerimento di usare `/config/www` da README e testi dell'interfaccia.
+
 ## 0.4.2
 - Nuovo sensore «Ultimo aggiornamento» (orario dell'ultima lettura riuscita da Argo, sia periodica sia manuale): lo stato del pulsante «Aggiorna da Argo» mostra solo l'ultima pressione.
 
