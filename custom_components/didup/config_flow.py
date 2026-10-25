@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import logging
-import secrets
 from pathlib import Path
 from typing import Any
 
@@ -186,7 +185,7 @@ class ReportSubentryFlow(ConfigSubentryFlow):
                 options=SEZIONI_REPORT, multiple=True, translation_key="sezioni_report")),
             vol.Required(R_MAX_PAGINE, default=v.get(R_MAX_PAGINE, R_MAX_PAGINE_DEFAULT)): NumberSelector(
                 NumberSelectorConfig(min=1, max=20, step=1, mode=NumberSelectorMode.BOX)),
-            vol.Required(R_CARTELLA, default=v.get(R_CARTELLA, self.hass.config.path("www", f"didup_report_{secrets.token_hex(4)}"))): TextSelector(),
+            vol.Required(R_CARTELLA, default=v.get(R_CARTELLA, self.hass.config.path("didup_report"))): TextSelector(),
             vol.Required(R_NOME_FILE, default=v.get(R_NOME_FILE, R_NOME_FILE_DEFAULT)): TextSelector(),
             vol.Required(R_AUTOMATICO, default=v.get(R_AUTOMATICO, False)): BooleanSelector(),
             vol.Required(R_ORA, default=v.get(R_ORA, "14:00:00")): TimeSelector(),
