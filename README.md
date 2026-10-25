@@ -60,7 +60,7 @@ Stile neutro: usa solo i colori del tema di Home Assistant. Si possono mettere p
 | Cosa stampare | compiti, promemoria/verifiche, voti, note, comunicazioni |
 | Un solo PDF per gli alunni con gli stessi compiti | opzionale (default no): alunni della **stessa classe** con compiti, promemoria e comunicazioni identici finiscono in un unico PDF con i nomi di tutti («Luca e Paolo Rossi»). Voti e note sono personali e restano separati per alunno nello stesso PDF |
 | Numero massimo di pagine | **limite rigido per ogni PDF**, di default 1: prima si rimpicciolisce il carattere, poi (solo se serve) si tolgono elementi in modo equo fra le sezioni e il PDF scrive quanti non sono stati stampati |
-| Cartella | dove salvarlo (deve essere consentita da Home Assistant; default `/config/didup_report`). **Non usare `/config/www`**: è pubblica |
+| Cartella | dove salvarlo (deve essere consentita da Home Assistant; default `/config/didup_report`, vedi «Dove salvare i PDF»). **Non usare `/config/www`**: è pubblica |
 | Nome del file | `{report}`, `{alunno}`, `{data}`, `{ora}` (default `{report}_{alunno}_{data}`); se manca `{alunno}` viene aggiunto in coda; senza `{data}` il file viene sovrascritto |
 | Generazione automatica | ora e giorni della settimana |
 
@@ -68,18 +68,12 @@ Ogni report ha un dispositivo «Report <nome>» con il pulsante **Genera PDF**, 
 `didup_report_generato`, **uno per ogni PDF** (`report`, `origine`, `alunno`, `file`, `pagine`, `non_stampati`; `origine` è `automatico` se l'ha prodotto l'orario e `manuale` se l'hai premuto tu: un'automazione può così reagire solo alla produzione programmata): con un'automazione puoi mandarlo alla stampante o su
 un'app di messaggi. In caso di errore compare una notifica in Home Assistant. Il PDF ha lo stile "a riquadri": fascia blu col nome degli alunni (e la classe), riquadri colorati per le verifiche in arrivo, un riquadro per giorno con le caselle ☐ (rosso oggi/domani, arancio entro 7 giorni, blu oltre) su 2-3 colonne, e riquadri analoghi per voti, note e comunicazioni. Per rispettare il limite di pagine il carattere si rimpicciolisce (da 11 a 6 pt); solo se nemmeno così ci sta vengono tolti elementi, e il piè di pagina dice quanti. Font DejaVu inclusi (licenza in `fonts/LICENSE.txt`).
 
-### Dove salvare i PDF (leggi: privacy)
-Il modulo propone una sottocartella con nome casuale dentro **`/config/www`** (es. `/config/www/didup_report_3fa9c1d2`): è già
-autorizzata da Home Assistant, quindi funziona subito senza modificare la configurazione.
+### Dove salvare i PDF (privacy)
+I PDF contengono dati dei ragazzi (compiti, voti, note): il modulo li salva di default in una cartella **privata** accanto alla
+configurazione, `/config/didup_report`. Home Assistant scrive fuori da certe cartelle solo se le autorizzi, quindi la prima volta
+servono tre passaggi:
 
-> ⚠️ **`/config/www` è pubblica.** Tutto ciò che c'è dentro è raggiungibile da `http(s)://<tuo-home-assistant>/local/…`
-> **senza login** da chiunque conosca l'indirizzo, e i PDF contengono dati dei ragazzi (compiti, voti, note). Il nome casuale
-> della sottocartella rende l'indirizzo difficile da indovinare, ma **non è una protezione**: non condividere i link e non
-> esporre Home Assistant su internet senza essere consapevole di questo. Se non ti va bene, usa una cartella privata (sotto).
-
-**Cartella privata (consigliato se Home Assistant è raggiungibile da internet):**
-
-1. crea la cartella (deve esistere già), per esempio `/config/didup_report`;
+1. crea la cartella `didup_report` nella cartella di configurazione di Home Assistant (deve esistere già);
 2. aggiungila a `configuration.yaml`:
    ```yaml
    homeassistant:
@@ -88,7 +82,10 @@ autorizzata da Home Assistant, quindi funziona subito senza modificare la config
    ```
 3. *Strumenti per sviluppatori → Riavvia → Ricarica la configurazione di base* (non serve riavviare Home Assistant).
 
-Se l'integrazione risponde «Cartella non consentita», la cartella non è sotto `/config/www` né in `allowlist_external_dirs`.
+Se l'integrazione risponde «Cartella non consentita», la cartella non esiste o non è in `allowlist_external_dirs`.
+
+> ⚠️ **Non usare `/config/www`** (né altre cartelle servite da Home Assistant): tutto ciò che c'è dentro è raggiungibile da
+> `http(s)://<tuo-home-assistant>/local/…` **senza login**, e un nome di cartella difficile da indovinare non è una protezione.
 
 ## Esempio: avviso a ogni nuovo voto
 ```yaml
