@@ -61,6 +61,11 @@ class DidupCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
     async def async_load_store(self) -> None:
         saved = await self._store.async_load()
         self._visti = saved.get("visti") if isinstance(saved, dict) else None
+        if isinstance(saved, dict) and isinstance(saved.get("report"), dict):
+            self.ultimi_report = saved["report"]  # così i PDF già prodotti restano scaricabili dopo un riavvio
+
+    async def _salva(self) -> None:
+        await self._store.async_save({"visti": self._visti, "report": self.ultimi_report})
 
     async def _async_update_data(self) -> dict[str, dict[str, Any]]:
         try:
@@ -118,7 +123,7 @@ class DidupCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                             nuovi.append((s, tipo, item))
         # le funzioni appena attivate non generano eventi sull'arretrato: restano nel dizionario dopo il primo giro
         self._visti = {**(self._visti or {}), **attuali}
-        await self._store.async_save({"visti": self._visti})
+        await self._salva()
         for s, tipo, item in nuovi:
             async_dispatcher_send(self.hass, SIGNAL_EVENTO, s, tipo, item)
 
@@ -171,7 +176,7 @@ class DidupCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 percorso = await self.hass.async_add_executor_job(
                     _scrivi, cartella,
                     report.nome_file(cfg.get(R_NOME_FILE, R_NOME_FILE_DEFAULT), sub.title, slug_gruppo, ora), esito.pdf)
-                files.append({"alunno": nome_gruppo, "file": percorso, "pagine": esito.pagine,
+                files.append({"alunno": nome_gruppo, "slug": slug_gruppo, "file": percorso, "pagine": esito.pagine,
                               "non_stampati": esito.non_stampati, "avvisi": esito.avvisi})
             if not files:
                 raise HomeAssistantError("nessuno degli alunni scelti è presente nei dati di Argo")
@@ -179,12 +184,14 @@ class DidupCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
             persistent_notification.async_create(
                 self.hass, f"Report «{sub.title}»: {e}", title="DidUP: report PDF non generato",
                 notification_id=f"didup_report_{sub.subentry_id}")
-            self.ultimi_report[sub.subentry_id] = {"esito": f"errore: {e}", "quando": ora_iso()}
+            self.ultimi_report[sub.subentry_id] = {**self.ultimi_report.get(sub.subentry_id, {}),  # i PDF di prima restano apribili
+                                                   "esito": f"errore: {e}", "quando": ora_iso()}
             async_dispatcher_send(self.hass, SIGNAL_REPORT, sub.subentry_id)
             raise HomeAssistantError(str(e)) from e
         persistent_notification.async_dismiss(self.hass, f"didup_report_{sub.subentry_id}")
-        ris = {"esito": "ok", "quando": ora_iso(), "origine": origine, "files": files}
+        ris = {"esito": "ok", "quando": ora_iso(), "origine": origine, "id": sub.subentry_id, "files": files}
         self.ultimi_report[sub.subentry_id] = ris
+        await self._salva()
         for f in files:
             self.hass.bus.async_fire(EVENTO_REPORT, {"report": sub.title, "origine": origine, **f})
         async_dispatcher_send(self.hass, SIGNAL_REPORT, sub.subentry_id)
