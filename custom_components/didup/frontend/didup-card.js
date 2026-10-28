@@ -1,7 +1,7 @@
 /* DidUP Famiglia (Argo) — card per Lovelace. Nessuna dipendenza: web component nativo + ha-form dell'editor.
  * Trova da sola le entità dell'alunno scelto (dispositivo) tramite la translation_key, quindi funziona
  * anche se l'utente rinomina gli entity_id. Stile neutro: usa solo le variabili del tema di Home Assistant. */
-const DIDUP_CARD_VERSION = "0.4.0";
+const DIDUP_CARD_VERSION = "0.5.0";
 
 const T = {
   it: {
@@ -10,7 +10,7 @@ const T = {
     nessuna_comunicazione: "Nessuna comunicazione", non_attiva: "Funzione non attivata nelle opzioni dell'integrazione.",
     nessun_alunno: "Nessun alunno trovato: configura l'integrazione DidUP.", media: "Media",
     compiti: "Compiti", promemoria: "Promemoria e verifiche", voti: "Voti", note: "Note disciplinari",
-    comunicazioni: "Comunicazioni", riepilogo: "Riepilogo", programma: "Programma PDF", auto: "Generazione automatica", non_report: "Scegli un dispositivo «Report …» (non un alunno).", ultimo_voto: "Ultimo voto", prossimo: "Prossimo promemoria",
+    comunicazioni: "Comunicazioni", riepilogo: "Riepilogo", programma: "Programma PDF", pdf: "PDF", apri_pdf: "Apri PDF", nessun_pdf: "Nessun PDF ancora: premi «Genera PDF».", pdf_errore: "Impossibile aprire il PDF", pagine_n: "{n} pag.", auto: "Generazione automatica", non_report: "Scegli un dispositivo «Report …» (non un alunno).", ultimo_voto: "Ultimo voto", prossimo: "Prossimo promemoria",
     nessuno: "Nessuno", compiti_di: "Compiti", tipo: "Tipo", docente: "Docente",
     ed_device: "Alunno (vuoto = tutti)", ed_vista: "Vista", ed_titolo: "Titolo (opzionale)",
     ed_max: "Elementi da mostrare", ed_docente: "Mostra il docente", ed_compatta: "Vista compatta",
@@ -23,7 +23,7 @@ const T = {
     nessuna_comunicazione: "No notices", non_attiva: "Feature not enabled in the integration options.",
     nessun_alunno: "No student found: set up the DidUP integration.", media: "Average",
     compiti: "Homework", promemoria: "Reminders and tests", voti: "Grades", note: "Disciplinary notes",
-    comunicazioni: "Notices", riepilogo: "Summary", programma: "PDF schedule", auto: "Automatic generation", non_report: "Choose a \"Report …\" device (not a student).", ultimo_voto: "Latest grade", prossimo: "Next reminder",
+    comunicazioni: "Notices", riepilogo: "Summary", programma: "PDF schedule", pdf: "PDF", apri_pdf: "Open PDF", nessun_pdf: "No PDF yet: press \"Generate PDF\".", pdf_errore: "Cannot open the PDF", pagine_n: "{n} p.", auto: "Automatic generation", non_report: "Choose a \"Report …\" device (not a student).", ultimo_voto: "Latest grade", prossimo: "Next reminder",
     nessuno: "None", compiti_di: "Homework", tipo: "Type", docente: "Teacher",
     ed_device: "Student (empty = all)", ed_vista: "View", ed_titolo: "Title (optional)",
     ed_max: "Items to show", ed_docente: "Show the teacher", ed_compatta: "Compact view",
@@ -31,7 +31,7 @@ const T = {
     descr: "DidUP card: students' homework, tests, grades and notices.",
   },
 };
-const VISTE = ["riepilogo", "compiti", "promemoria", "voti", "note", "comunicazioni", "programma"];
+const VISTE = ["riepilogo", "compiti", "promemoria", "voti", "note", "comunicazioni", "programma", "pdf"];
 const GIORNI_KEY = ["mon", "tue", "wed", "thu", "fri", "sat", "sun"];
 const STUDENTE = ["compiti", "promemoria", "ultimo_voto", "media_generale", "note_disciplinari", "comunicazioni", "novita", "calendario"];
 const tr = (hass, k) => ((T[(hass?.language || "en").slice(0, 2)] || T.en)[k]) ?? T.en[k] ?? k;
@@ -77,6 +77,13 @@ const STYLE = `
 ha-card { padding: 16px; }
 .titolo { font-size: 1.15rem; font-weight: 500; color: var(--primary-text-color); margin: 0 0 8px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
 .titolo small { color: var(--secondary-text-color); font-size: .8rem; font-weight: 400; }
+.pdfs { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 8px; }
+.pdfbtn { display: flex; align-items: center; gap: 8px; padding: 10px 12px; border: 1px solid var(--divider-color); border-radius: 10px; background: var(--secondary-background-color, transparent); color: var(--primary-text-color); font: inherit; cursor: pointer; text-align: left; }
+.pdfbtn:hover { border-color: var(--primary-color); }
+.pdfbtn ha-icon { color: var(--error-color, #db4437); flex: none; }
+.pdfbtn .pn { font-weight: 500; flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.pdfbtn small { color: var(--secondary-text-color); white-space: nowrap; }
+.pdfbtn.err { border-color: var(--error-color, #db4437); }
 .alunno + .alunno { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--divider-color); }
 .bad { --tc: var(--error-color, #db4437); } .warn { --tc: var(--warning-color, #ffa000); } .info { --tc: var(--primary-color, #03a9f4); }
 .giorno { margin-top: 14px; border-left: 3px solid var(--tc); border-radius: 3px; padding-left: 10px; }
@@ -145,7 +152,7 @@ class DidupCard extends HTMLElement {
     const tutti = ids.map((id) => ({ id, nome: deviceName(hass, id), ent: entitiesOfDevice(hass, id) }));
     if (c.device_id) return tutti;  // dispositivo scelto esplicitamente: così com'è
     // senza scelta: solo i dispositivi pertinenti (alunni per le viste degli alunni, report per il programma)
-    return tutti.filter((t) => (c.vista === "programma" ? !!t.ent.automatico_report : STUDENTE.some((k) => t.ent[k])));
+    return tutti.filter((t) => (c.vista === "programma" || c.vista === "pdf" ? !!t.ent.automatico_report : STUDENTE.some((k) => t.ent[k])));
   }
 
   _render() {
@@ -167,6 +174,15 @@ class DidupCard extends HTMLElement {
 
   _bind() {
     const h = this._hass;
+    this.shadowRoot.querySelectorAll("[data-pdf]").forEach((el) => el.addEventListener("click", async () => {
+      // link firmato (valido pochi minuti): apre il PDF nel browser o nell'app senza renderlo pubblico
+      try {
+        const r = await h.callWS({ type: "auth/sign_path", path: el.dataset.pdf, expires: 300 });
+        const a = document.createElement("a");
+        a.href = h.hassUrl(r.path); a.target = "_blank"; a.rel = "noopener";
+        this.shadowRoot.appendChild(a); a.click(); a.remove();
+      } catch (e) { el.title = tr(h, "pdf_errore"); el.classList.add("err"); }
+    }));
     this.shadowRoot.querySelectorAll("[data-sw]").forEach((el) => el.addEventListener("change", () =>
       h.callService("switch", el.checked ? "turn_on" : "turn_off", { entity_id: el.dataset.sw })));
     this.shadowRoot.querySelectorAll("[data-t]").forEach((el) => el.addEventListener("change", () => {
@@ -284,6 +300,19 @@ class DidupCard extends HTMLElement {
         `<input type="time" data-t="${esc(E["ora_" + g])}" value="${esc(ora)}" ${on ? "" : "disabled"}></div>`;
     });
     return html;
+  }
+
+  _v_pdf(t) {
+    const h = this._hass, E = t.ent;
+    if (!E.automatico_report) return `<div class="vuoto">${esc(tr(h, "non_report"))}</div>`;
+    const a = (E.genera_report && h.states[E.genera_report]?.attributes) || {};
+    const files = (a.files || []).filter((f) => f.slug && a.id);
+    if (!files.length) return this._vuoto("nessun_pdf");
+    const quando = a.quando ? new Intl.DateTimeFormat(h.language || "en", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(a.quando)) : "";
+    return `<div class="pdfs">` + files.map((f) =>
+      `<button class="pdfbtn" data-pdf="/api/didup/pdf/${encodeURIComponent(a.id)}/${encodeURIComponent(f.slug)}">` +
+      `<ha-icon icon="mdi:file-pdf-box"></ha-icon><span class="pn">${esc(f.alunno)}</span>` +
+      `<small>${esc(tr(h, "pagine_n").replace("{n}", f.pagine))}${quando ? " · " + esc(quando) : ""}</small></button>`).join("") + `</div>`;
   }
 
   _v_riepilogo(t) {
