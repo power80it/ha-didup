@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.0
+- Nuova vista `pdf` della card: un pulsante per ogni alunno che apre nel browser o nell'app l'ultimo PDF prodotto, con login (link firmato di breve durata) e senza rendere pubblica la cartella.
+- Nuovo indirizzo autenticato `/api/didup/pdf/<report>/<alunno>`: serve solo i PDF prodotti dall'integrazione, dentro la cartella del report.
+- I PDF già prodotti restano apribili dopo un riavvio di Home Assistant e dopo una generazione fallita.
+- L'evento `didup_report_generato` ha in più il campo `slug`.
+
 ## 0.4.3
 - Privacy: la cartella proposta per i PDF non è più dentro `/config/www` (pubblica, senza login) ma `/config/didup_report`, da autorizzare con `allowlist_external_dirs`; tolto ogni suggerimento di usare `/config/www` da README e testi dell'interfaccia.
 
