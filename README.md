@@ -46,6 +46,7 @@ dashboard: *Aggiungi card → DidUP*. Dall'editor visivo scegli:
 - **Alunno** (se lo lasci vuoto la card li mostra tutti);
 - **Vista**: riepilogo, compiti, promemoria e verifiche, voti, note, comunicazioni;
 - **Programma**: pannello per attivare i giorni e impostare l'orario di ogni giorno di un report (scegli il dispositivo «Report …»);
+- **PDF**: un pulsante per ogni alunno che apre l'ultimo PDF prodotto (scegli il dispositivo «Report …»), vedi «Aprire il PDF dal browser o dall'app»;
 - titolo, numero di elementi, raggruppamento dei compiti (per giorno o per materia), docente sì/no, vista compatta.
 
 Stile neutro: usa solo i colori del tema di Home Assistant. Si possono mettere più card (una per alunno e vista).
@@ -86,6 +87,19 @@ Se l'integrazione risponde «Cartella non consentita», la cartella non esiste o
 
 > ⚠️ **Non usare `/config/www`** (né altre cartelle servite da Home Assistant): tutto ciò che c'è dentro è raggiungibile da
 > `http(s)://<tuo-home-assistant>/local/…` **senza login**, e un nome di cartella difficile da indovinare non è una protezione.
+
+### Aprire il PDF dal browser o dall'app
+La card ha la vista **`pdf`**: scegli un dispositivo «Report …» e compare **un pulsante per ogni alunno** (con pagine e orario
+di produzione) che apre l'ultimo PDF prodotto nel browser o nell'app. Il PDF resta nella cartella privata: la card chiede a
+Home Assistant un link firmato che vale pochi minuti (`auth/sign_path`), quindi serve aver fatto il login e il file non
+diventa mai pubblico. L'indirizzo `/api/didup/pdf/<report>/<alunno>` serve solo i PDF prodotti dall'integrazione, mai un
+percorso scelto da chi chiede, e richiede l'autenticazione.
+
+```yaml
+type: custom:didup-card
+vista: pdf
+device_id: <dispositivo «Report …»>
+```
 
 ## Esempio: avviso a ogni nuovo voto
 ```yaml
