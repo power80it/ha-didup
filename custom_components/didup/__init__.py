@@ -20,6 +20,7 @@ from .api import DidupApi
 from .frontend import async_registra_risorsa, async_rimuovi_risorsa
 from .const import CONF_CODICE, CONF_PASSWORD, CONF_UTENTE, DOMAIN, R_AUTOMATICO, R_GIORNI, R_ORA, R_ORARI, SIGNAL_REPORT
 from .coordinator import DidupCoordinator
+from .download import PdfReportView
 from .pianificatore import Pianificatore
 
 DidupConfigEntry = ConfigEntry[DidupCoordinator]
@@ -38,6 +39,7 @@ CARD_URL = "/didup_static/didup-card.js"
 async def async_setup(hass: HomeAssistant, config: ConfigType) -> bool:
     """Serve la card Lovelace inclusa (`custom:didup-card`) e la carica in tutte le dashboard."""
     digest = await hass.async_add_executor_job(lambda: sha256(CARD_FILE.read_bytes()).hexdigest()[:10])
+    hass.http.register_view(PdfReportView())
     await hass.http.async_register_static_paths([StaticPathConfig(CARD_URL, str(CARD_FILE), False)])
     url = f"{CARD_URL}?v={digest}"
     if not await async_registra_risorsa(hass, CARD_URL, url):
