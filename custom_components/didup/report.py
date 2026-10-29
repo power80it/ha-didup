@@ -1,7 +1,9 @@
-"""Generazione del PDF dei report (reportlab, nessun Home Assistant). Aspetto "classico" di DidUP.
+"""Generazione del PDF dei report (reportlab, nessun Home Assistant). Aspetto «biglietto» di DidUP (dalla 0.6.0).
 
-Fascia blu col nome degli alunni, riquadri colorati per le verifiche in arrivo, un riquadro per giorno (rosso: oggi/domani,
-arancio: entro 7 giorni, blu: oltre) su 2-3 colonne con le caselle ☐, e riquadri analoghi per voti, note e comunicazioni.
+Testata sfumata blu/verde acqua con taglio arancio (nome a sinistra, classe e aggiornamento a destra), promemoria come
+biglietti con talloncino, un riquadro-biglietto per giorno (rosso: oggi/domani, arancio: entro 7 giorni, blu: oltre) su 2-3
+colonne con le caselle ▢, e riquadri analoghi per voti, note e comunicazioni. Ogni biglietto ha il talloncino colorato a
+sinistra e un filo del colore del giorno sul bordo superiore.
 
 Il numero massimo di pagine è un limite rigido. Per far stare tutto si prova prima a rimpicciolire il carattere (da 11 a 6 pt, 2-3
 colonne); solo se nemmeno al minimo ci sta si tolgono elementi dalle sezioni più lunghe (equo fra le sezioni, partendo dagli ultimi)
@@ -22,8 +24,8 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.pdfbase import pdfmetrics
 from reportlab.pdfbase.ttfonts import TTFont
-from reportlab.platypus import (BaseDocTemplate, Frame, FrameBreak, KeepTogether, NextPageTemplate, PageTemplate, Paragraph,
-                                Spacer, Table, TableStyle)
+from reportlab.platypus import (BaseDocTemplate, Flowable, Frame, FrameBreak, KeepTogether, NextPageTemplate, PageTemplate,
+                                Paragraph, Spacer, Table, TableStyle)
 
 from . import parsing
 
@@ -34,7 +36,7 @@ TITOLI = {"compiti": "Compiti", "promemoria": "Promemoria e verifiche", "voti": 
 MAX_VOTI = 15
 MAX_COMUNICAZIONI = 10
 
-FONTS = Path(__file__).parent / "fonts"  # DejaVu (licenza in fonts/LICENSE.txt): copre accenti, ☐ e simboli
+FONTS = Path(__file__).parent / "fonts"  # DejaVu (licenza in fonts/LICENSE.txt): copre accenti, ▢ e simboli
 INK = colors.HexColor("#1f2933")
 GRIGIO = colors.HexColor("#6b7785")
 BLU = colors.HexColor("#2f5d8a")
@@ -42,6 +44,8 @@ ROSSO, ARANCIO = colors.HexColor("#c0392b"), colors.HexColor("#d9822b")
 VERDE = colors.HexColor("#2e7d32")
 BG = {"rosso": colors.HexColor("#fdecea"), "arancio": colors.HexColor("#fff3e3"), "blu": colors.HexColor("#eaf1f8")}
 COL = {"rosso": ROSSO, "arancio": ARANCIO, "blu": BLU}
+BLU_CH, VERDE_ACQUA = colors.HexColor("#1e88e5"), colors.HexColor("#12b3a8")  # sfumatura della testata
+ARA_CH, ARA_SC = colors.HexColor("#fbb34a"), colors.HexColor("#f08a2b")  # taglio arancio della testata
 MARG = 10 * mm
 W = A4[0] - 2 * MARG
 H = A4[1]
@@ -93,72 +97,275 @@ def _righe(sezione: str, dati: dict) -> list[dict]:
     return list(dati.get(sezione, []))
 
 
-def _box(testa_html: str, conteggio: int, righe: list, t: str, fs: float, colw: float) -> Table:
-    """Riquadro con testata colorata e una riga di testo per elemento (righe = HTML già pronto)."""
-    st_h = ParagraphStyle("h", fontName="DV-B", fontSize=fs + 1, leading=(fs + 1) * 1.25, textColor=COL[t])
-    st_c = ParagraphStyle("hc", fontName="DV", fontSize=fs - 0.5, leading=(fs + 1) * 1.25, textColor=GRIGIO, alignment=2)
-    corpo = ParagraphStyle("c", fontName="DV", fontSize=fs, leading=fs * 1.22, textColor=INK,
-                           leftIndent=fs * 1.5, firstLineIndent=-fs * 1.5)
-    dati = [[Paragraph(testa_html, st_h), Paragraph(str(conteggio), st_c)]]
-    dati += [[Paragraph(r, corpo), ""] for r in righe]
-    tab = Table(dati, colWidths=[colw - 10 * mm, 10 * mm], repeatRows=1)
-    stile = [("SPAN", (0, i), (1, i)) for i in range(1, len(dati))]
-    stile += [("BACKGROUND", (0, 0), (-1, 0), BG[t]), ("LINEBEFORE", (0, 0), (0, 0), 2.2, COL[t]),
-              ("LEFTPADDING", (0, 0), (-1, -1), 1.8 * mm), ("RIGHTPADDING", (0, 0), (-1, -1), 1.5 * mm),
-              ("TOPPADDING", (0, 0), (-1, 0), 1 * mm), ("BOTTOMPADDING", (0, 0), (-1, 0), 1 * mm),
-              ("TOPPADDING", (0, 1), (-1, -1), 0.9 * mm), ("BOTTOMPADDING", (0, 1), (-1, -1), 0.9 * mm),
-              ("LINEBELOW", (0, 1), (-1, -2), 0.3, colors.HexColor("#d5dbe1")),
-              ("BOX", (0, 0), (-1, -1), 0.5, colors.HexColor("#cfd6dd")), ("VALIGN", (0, 0), (-1, -1), "TOP")]
-    tab.setStyle(TableStyle(stile))
-    return tab
+MESI = ["GEN", "FEB", "MAR", "APR", "MAG", "GIU", "LUG", "AGO", "SET", "OTT", "NOV", "DIC"]
+GRIGIO_BORDO = colors.HexColor("#d5dbe1")
+
+
+def _k(fs: float) -> float:
+    """Fattore di scala dei talloncini rispetto al corpo normale (9 pt): si rimpiccioliscono col testo."""
+    return min(1.15, max(0.7, fs / 9))
+
+
+def _sfuma(c, x: float, y: float, w: float, h: float, a, b, n: int = 50) -> None:
+    """Sfumatura orizzontale a fette (compatibile con tutte le viste PDF)."""
+    for i in range(n):
+        f = i / (n - 1)
+        c.setFillColor(colors.Color(*[a.rgb()[j] * (1 - f) + b.rgb()[j] * f for j in range(3)]))
+        c.rect(x + i * w / n, y, w / n + 0.5, h, fill=1, stroke=0)
+
+
+def _talloncino(c, sw: float, h: float, col, bianco_sopra: bool = True) -> None:
+    """Parte colorata a sinistra del biglietto, perforazione tratteggiata e due tacche."""
+    c.setFillColor(col)
+    c.rect(0, 0, sw, h, fill=1, stroke=0)
+    c.setStrokeColor(colors.white)
+    c.setDash(1.6, 1.6)
+    c.setLineWidth(1)
+    c.line(sw, 1 * mm, sw, h - 1 * mm)
+    c.setDash()
+    c.setFillColor(colors.white)
+    c.circle(sw, h, 1.6 * mm, fill=1, stroke=0)
+    c.circle(sw, 0, 1.6 * mm, fill=1, stroke=0)
+
+
+def _clip_arrotondato(c, w: float, h: float, r: float) -> None:
+    p = c.beginPath()
+    p.roundRect(0, 0, w, h, r)
+    c.clipPath(p, stroke=0, fill=0)
+
+
+class _Testata(Flowable):
+    """Fascia in cima: sfumatura blu/verde acqua con taglio diagonale arancio, nome a sinistra, classe e aggiornamento a destra."""
+    ALTEZZA = 18 * mm
+
+    def __init__(self, nome: str, righe: list[str]):
+        super().__init__()
+        self.nome, self.righe = nome, righe
+
+    def wrap(self, aw, ah):
+        self.w = aw
+        return aw, self.ALTEZZA
+
+    def draw(self):
+        c, w, h = self.canv, self.w, self.ALTEZZA
+        c.saveState()
+        _clip_arrotondato(c, w, h, 5 * mm)
+        _sfuma(c, 0, 0, w, h, BLU_CH, VERDE_ACQUA, 60)
+        taglio = c.beginPath()
+        taglio.moveTo(w * 0.75, h)
+        taglio.lineTo(w, h)
+        taglio.lineTo(w, 0)
+        taglio.lineTo(w * 0.69, 0)
+        taglio.close()
+        c.saveState()
+        c.clipPath(taglio, stroke=0, fill=0)
+        _sfuma(c, w * 0.67, 0, w * 0.33, h, ARA_CH, ARA_SC, 40)
+        c.restoreState()
+        c.setStrokeColor(colors.Color(1, 1, 1, 0.55))
+        c.setLineWidth(0.9)
+        c.line(w * 0.75, h, w * 0.69, 0)
+        for cx, cy, r, al in ((0.93, 0.85, 14, 0.22), (0.82, 0.02, 8, 0.2), (0.5, 0.98, 6, 0.11), (0.04, 0.0, 8, 0.10)):
+            c.setFillColor(colors.Color(1, 1, 1, al))
+            c.circle(w * cx, h * cy, r * mm * 0.85, fill=1, stroke=0)
+        c.restoreState()
+        fs = 18.0
+        while fs > 11 and pdfmetrics.stringWidth(self.nome, "DV-B", fs) > w * 0.69 - 12 * mm:
+            fs -= 0.5
+        c.setFillColor(colors.white)
+        c.setFont("DV-B", fs)
+        c.drawString(6 * mm, h / 2 - 2 * mm * fs / 18, self.nome)
+        n = len(self.righe)
+        c.setFillColor(colors.HexColor("#111111"))
+        for i, riga in enumerate(self.righe):
+            f = 9.5
+            while f > 6.5 and pdfmetrics.stringWidth(riga, "DV-B", f) > w * 0.28 - 6 * mm:
+                f -= 0.5
+            c.setFont("DV-B", f)
+            c.drawRightString(w - 6 * mm, h / 2 + (n - 1) * 2.9 * mm - i * 5.8 * mm - 1.6 * mm, riga)
+
+
+class _Divisore(Flowable):
+    """Titoletto con un filo che prosegue fino al margine destro (separa i promemoria dai compiti)."""
+
+    def __init__(self, testo: str, fs: float = 7.5):
+        super().__init__()
+        self.testo, self.fs = testo, fs
+
+    def wrap(self, aw, ah):
+        self.w = aw
+        return aw, self.fs * 1.6
+
+    def draw(self):
+        c = self.canv
+        c.setFillColor(GRIGIO)
+        t = c.beginText(0, self.fs * 0.35)
+        t.setFont("DV-B", self.fs)
+        t.setCharSpace(0.6)
+        t.textOut(self.testo)
+        c.drawText(t)
+        x = pdfmetrics.stringWidth(self.testo, "DV-B", self.fs) + 0.6 * len(self.testo) + 3 * mm
+        c.setStrokeColor(colors.HexColor("#c4ccd4"))
+        c.setLineWidth(0.8)
+        c.line(x, self.fs * 0.35 + self.fs * 0.3, self.w, self.fs * 0.35 + self.fs * 0.3)
+
+
+class _Card(Flowable):
+    """Riquadro «biglietto»: talloncino colorato a sinistra (righe di `stub`), corpo bianco con una riga per elemento e filo
+    colorato sul bordo superiore. Si spezza riga per riga fra colonne e pagine (il talloncino si ripete)."""
+    SW = 15 * mm
+
+    def __init__(self, t: str, stub: list, righe: list[str], fs: float, minh: float):
+        super().__init__()
+        self.t, self.stub, self.righe, self.fs, self.minh = t, stub, righe, fs, minh
+        self.gap = 1.0 * mm * _k(fs)
+
+    def _layout(self, aw):
+        st = ParagraphStyle("c", fontName="DV", fontSize=self.fs, leading=self.fs * 1.28, textColor=INK,
+                            leftIndent=self.fs * 1.6, firstLineIndent=-self.fs * 1.6)
+        self._ps = [Paragraph(r, st) for r in self.righe]
+        tw = aw - self.SW - 7 * mm
+        self._ph = [p.wrap(tw, 10000)[1] for p in self._ps]
+
+    def wrap(self, aw, ah):
+        self.w = aw
+        self._layout(aw)
+        self.h = max(self.minh, sum(h + 2 * self.gap for h in self._ph) + 3 * mm)
+        return self.w, self.h
+
+    def split(self, aw, ah):
+        self.wrap(aw, ah)
+        acc, n = 0.0, 0
+        for h in self._ph:
+            if max(self.minh, acc + h + 2 * self.gap + 3 * mm) > ah:
+                break
+            acc += h + 2 * self.gap
+            n += 1
+        if n == 0:
+            return []
+        if n == len(self.righe):
+            return [self]
+        return [_Card(self.t, self.stub, self.righe[:n], self.fs, self.minh), _Card(self.t, self.stub, self.righe[n:], self.fs, self.minh)]
+
+    def draw(self):
+        c, w, h, col, sw = self.canv, self.w, self.h, COL[self.t], self.SW
+        c.setFillColor(colors.white)
+        c.setStrokeColor(GRIGIO_BORDO)
+        c.setLineWidth(0.6)
+        c.roundRect(0, 0, w, h, 2 * mm, fill=1, stroke=1)
+        c.saveState()
+        _clip_arrotondato(c, w, h, 2 * mm)
+        _talloncino(c, sw, h, col)
+        c.restoreState()
+        ks = min(1.1, max(0.75, self.fs / 9))
+        for s, f, sz, dy in self.stub:
+            c.setFillColor(colors.white)
+            c.setFont(f, sz * ks)
+            c.drawCentredString(sw / 2, h / 2 + dy * mm * ks, s)
+        y = h - 1.5 * mm
+        for p, ph in zip(self._ps, self._ph):
+            p.drawOn(c, sw + 4 * mm, y - self.gap - ph)
+            y -= ph + 2 * self.gap
+        c.setStrokeColor(col)
+        c.setLineWidth(2.4)
+        c.setLineCap(1)
+        c.line(3 * mm, h, w - 3 * mm, h)
+        c.setLineCap(0)
+
+
+class _Biglietto(Flowable):
+    """Promemoria: talloncino colorato a sinistra (giorno, data, ora), testo in grassetto, docente in corsivo e barra colorata
+    in cima al corpo."""
+    SW = 19 * mm
+
+    def __init__(self, t: str, stub: list, testo: str, docente: str, fs: float):
+        super().__init__()
+        self.t, self.stub, self.testo, self.docente, self.fs = t, stub, testo, docente, fs
+        self.k = _k(fs)
+
+    def wrap(self, aw, ah):
+        self.w = aw
+        tw = aw - self.SW - 7 * mm
+        self._p = [Paragraph(f"<b>{_h(self.testo)}</b>", ParagraphStyle("bt", fontName="DV-B", fontSize=self.fs + 0.2, leading=(self.fs + 0.2) * 1.25, textColor=INK))]
+        if self.docente:
+            self._p.append(Paragraph(_h(self.docente), ParagraphStyle("bd", fontName="DV-I", fontSize=max(self.fs - 1.5, 5.5), leading=self.fs * 1.2, textColor=GRIGIO)))
+        self._ph = [p.wrap(tw, 10000)[1] for p in self._p]
+        self.h = max(19 * mm * self.k, 5 * mm + sum(self._ph))
+        return self.w, self.h
+
+    def draw(self):
+        c, w, h, col, sw = self.canv, self.w, self.h, COL[self.t], self.SW
+        c.setFillColor(colors.white)
+        c.setStrokeColor(GRIGIO_BORDO)
+        c.setLineWidth(0.6)
+        c.roundRect(0, 0, w, h, 2 * mm, fill=1, stroke=1)
+        c.saveState()
+        _clip_arrotondato(c, w, h, 2 * mm)
+        _talloncino(c, sw, h, col)
+        c.setFillColor(col)
+        c.rect(sw, h - 1.3 * mm, w - sw, 1.3 * mm, fill=1, stroke=0)
+        c.restoreState()
+        ks = min(1.1, max(0.75, self.fs / 9))
+        for s, f, sz, dy in self.stub:
+            c.setFillColor(colors.white)
+            c.setFont(f, sz * ks)
+            c.drawCentredString(sw / 2, h / 2 + dy * mm * ks, s)
+        y = h - 3.2 * mm
+        for p, ph in zip(self._p, self._ph):
+            p.drawOn(c, sw + 3 * mm, y - ph)
+            y -= ph + 0.8 * mm
 
 
 def _box_promemoria(items: list[dict], oggi: dt.date, fs: float):
     if not items:
         return None
-    n = 3 if len(items) > 2 else len(items)
+    n = 3  # sempre tre colonne: con pochi promemoria i biglietti restano della stessa misura, a sinistra
     gap = 2 * mm
     cw = (W - (n - 1) * gap) / n
     pfs = max(fs - 0.5, 6)
     righe_n = (len(items) + n - 1) // n
     ncol = n * 2 - 1
     dati = [[""] * ncol for _ in range(righe_n * 2 - 1)]
-    stili = []
     for i, p in enumerate(items):
         lab, delta = _breve(p["data"], oggi)
         t = tono(delta)
-        quando = lab + (f" · {p['ora']}" if p.get("ora") else "") + ("  (OGGI)" if delta == 0 else "  (domani)" if delta == 1 else "")
-        cella = [Paragraph(f"<b>{_h(quando)}</b>", ParagraphStyle("pd", fontName="DV-B", fontSize=pfs, leading=pfs * 1.2, textColor=COL[t])),
-                 Paragraph(_h(p["testo"]), ParagraphStyle("pt", fontName="DV", fontSize=pfs, leading=pfs * 1.2, textColor=INK))]
-        if p.get("docente"):
-            cella.append(Paragraph(_h(p["docente"]), ParagraphStyle("pp", fontName="DV-I", fontSize=pfs - 1, leading=pfs * 1.1, textColor=GRIGIO)))
-        r, c = divmod(i, n)
-        col = c * 2
-        dati[r * 2][col] = cella
-        stili += [("BACKGROUND", (col, r * 2), (col, r * 2), BG[t]), ("LINEBEFORE", (col, r * 2), (col, r * 2), 2.2, COL[t])]
+        gs, data = lab.split(" ", 1)
+        ora = p.get("ora") if p.get("ora") not in ("", "00:00") else ""  # Argo manda 00:00 quando non c'è un orario
+        stub = [({0: "OGGI", 1: "DOMANI"}.get(delta, gs.upper()), "DV-B", 7, 6.5 if ora else 4.5),
+                (data, "DV-B", 11, -1.0 if ora else -2.5)]
+        if ora:
+            stub.append((ora, "DV", 7.5, -6.0))
+        r, col = divmod(i, n)
+        dati[r * 2][col * 2] = _Biglietto(t, stub, p["testo"], p.get("docente", ""), pfs)
     grid = Table(dati, colWidths=[x for i in range(n) for x in ([cw] if i == n - 1 else [cw, gap])],
                  rowHeights=[None if i % 2 == 0 else 1.6 * mm for i in range(righe_n * 2 - 1)])
-    grid.setStyle(TableStyle(stili + [("LEFTPADDING", (0, 0), (-1, -1), 2 * mm), ("RIGHTPADDING", (0, 0), (-1, -1), 1.5 * mm),
-                                      ("TOPPADDING", (0, 0), (-1, -1), 1.2 * mm), ("BOTTOMPADDING", (0, 0), (-1, -1), 1.4 * mm),
-                                      ("VALIGN", (0, 0), (-1, -1), "TOP")]))
-    etichetta = Paragraph("PROMEMORIA IN ARRIVO", ParagraphStyle("pl", fontName="DV-B", fontSize=pfs, leading=pfs * 1.3, textColor=GRIGIO))
-    return [etichetta, Spacer(1, 0.8 * mm), grid]
+    grid.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0),
+                              ("TOPPADDING", (0, 0), (-1, -1), 0), ("BOTTOMPADDING", (0, 0), (-1, -1), 0), ("VALIGN", (0, 0), (-1, -1), "TOP")]))
+    etichetta = Paragraph("PROMEMORIA IN ARRIVO", ParagraphStyle("pl", fontName="DV-B", fontSize=pfs, leading=pfs * 1.3, textColor=GRIGIO, charSpace=0.6))
+    return [etichetta, Spacer(1, 1.2 * mm), grid]
+
+
+def _formatta_media(m) -> str:
+    return f"{m:.1f}".replace(".", ",")
 
 
 def _boxes_blocco(b: dict, righe: list[dict], oggi: dt.date, fs: float, colw: float) -> list:
     """Riquadri di un blocco: uno per giorno per i compiti, uno solo per le altre sezioni."""
     sez = b["sezione"]
+    minh = 22 * mm * _k(fs)
     if sez == "compiti":
         out = []
         giorni: dict[str, list[dict]] = {}
         for x in righe:
             giorni.setdefault(x["data"], []).append(x)
         for d, xs in giorni.items():
-            lab, delta = _breve(d, oggi)
+            _, delta = _breve(d, oggi)
             t = tono(delta)
-            quando = {0: "OGGI", 1: "DOMANI"}.get(delta, "")
-            rr = [f"☐&nbsp;<font name='DV-B' color='{_hex(COL[t])}'>{_h(x['materia'])}</font>: {_h(x['testo'])}" for x in xs]
-            out.append(_box(f"{quando + ' · ' if quando else ''}{lab}", len(xs), rr, t, fs, colw))
+            data = dt.date.fromisoformat(d[:10])
+            su = {0: "OGGI", 1: "DOMANI"}.get(delta, ABBR[data.weekday()].upper())
+            stub = [(su, "DV-B", 6.5 if delta in (0, 1) else 7, 7.0), (str(data.day), "DV-B", 19, -1.0), (MESI[data.month - 1], "DV-B", 7.5, -5.5)]
+            casella = f"<font color='{_hex(COL[t])}' size='{fs + 3:.1f}'>▢</font>"
+            rr = [f"{casella}&nbsp;<font name='DV-B' color='{_hex(COL[t])}'>{_h(x['materia'])}</font>: {_h(x['testo'])}" for x in xs]
+            out.append(_Card(t, stub, rr, fs, minh))
         return out
     if not righe:
         return []
@@ -170,47 +377,46 @@ def _boxes_blocco(b: dict, righe: list[dict], oggi: dt.date, fs: float, colw: fl
             desc = f"<br/><font name='DV-I' color='#6b7785'>{_h(x['descrizione'])}</font>" if x.get("descrizione") else ""
             rr.append(f"<font name='DV-B' color='{_hex(_colore_voto(x['valore']))}'>{_h(x['voto'])}</font>&nbsp; "
                       f"<font name='DV-B'>{_h(x['materia'])}</font> <font color='#6b7785'>{lab}{_h(extra)}</font>{desc}")
-        return [_box(b["titolo_box"], len(righe), rr, "blu", fs, colw)]
+        media = b.get("media")
+        stub = [("VOTI", "DV-B", 7, 7.0), (_formatta_media(media) if media is not None else str(len(righe)), "DV-B", 13, -1.0),
+                ("media" if media is not None else "voti", "DV", 6.5, -5.5)]
+        if "—" in b["titolo_box"]:  # PDF unito: serve il nome di chi ha preso i voti
+            stub.insert(0, (b["titolo_box"].split("—", 1)[1].strip().upper()[:9], "DV-B", 6.3, 10.5))
+            return [_Card("blu", stub, rr, fs, minh * 1.15)]
+        return [_Card("blu", stub, rr, fs, minh)]
     if sez == "note":
         rr = []
         for x in righe:
             lab, _ = _breve(x["data"], oggi)
             doc = f" <font name='DV-I' color='#6b7785'>({_h(x['docente'])})</font>" if x.get("docente") else ""
             rr.append(f"<font name='DV-B'>{lab}</font>{doc}: {_h(x['testo'])}")
-        return [_box(b["titolo_box"], len(righe), rr, "rosso", fs, colw)]
+        if "—" in b["titolo_box"]:  # PDF unito: serve il nome dell'alunno, quindi il talloncino è alto come gli altri
+            stub = [(b["titolo_box"].split("—", 1)[1].strip().upper()[:9], "DV-B", 6.3, 8.0), ("NOTE", "DV-B", 7, 3.5), (str(len(righe)), "DV-B", 16, -4.5)]
+            return [_Card("rosso", stub, rr, fs, minh)]
+        return [_Card("rosso", [("NOTE", "DV-B", 7, 3.5), (str(len(righe)), "DV-B", 16, -3.5)], rr, fs, minh * 0.75)]
     rr = []  # comunicazioni
     for x in righe:
         lab, _ = _breve(x["data"], oggi)
         cat = f" · {_h(x['categoria'])}" if x.get("categoria") else ""
         testo = x["testo"][:200] + ("…" if len(x["testo"]) > 200 else "")
         rr.append(f"<font name='DV-B'>{lab}</font><font color='#6b7785'>{cat}</font>: {_h(testo)}")
-    return [_box(b["titolo_box"], len(righe), rr, "blu", fs, colw)]
+    return [_Card("blu", [("AVVISI", "DV-B", 6.5, 3.5), (str(len(righe)), "DV-B", 16, -3.5)], rr, fs, minh)]
 
 
 # ------------------------------------------------------------------------------------------- impaginazione
-def _intestazione(nome: str, destra: str) -> Table:
-    st_n = ParagraphStyle("n", fontName="DV-B", fontSize=17, leading=20, textColor=colors.white)
-    st_r = ParagraphStyle("r", fontName="DV", fontSize=8.5, leading=11, textColor=colors.HexColor("#dbe6f1"), alignment=2)
-    t = Table([[Paragraph(_h(nome), st_n), Paragraph(destra, st_r)]], colWidths=[W * 0.55, W * 0.45])
-    t.setStyle(TableStyle([("BACKGROUND", (0, 0), (-1, -1), BLU), ("VALIGN", (0, 0), (-1, -1), "MIDDLE"),
-                           ("LEFTPADDING", (0, 0), (0, 0), 5 * mm), ("RIGHTPADDING", (-1, 0), (-1, 0), 5 * mm),
-                           ("TOPPADDING", (0, 0), (-1, -1), 2.5 * mm), ("BOTTOMPADDING", (0, 0), (-1, -1), 2.5 * mm)]))
-    return t
-
-
 def _costruisci(ctx: dict, tolti: dict[str, int], cols: int, fs: float) -> tuple[bytes, int]:
     oggi, blocchi = ctx["oggi"], ctx["blocchi"]
     gap = 3 * mm
     colw = (W - (cols - 1) * gap) / cols
     tenuti = {b["id"]: b["righe"][: len(b["righe"]) - tolti.get(b["id"], 0)] for b in blocchi}
-    n_comp = sum(len(tenuti[b["id"]]) for b in blocchi if b["sezione"] == "compiti")
-    destra = ctx["destra"].replace("{n}", f"{n_comp} compit{'o' if n_comp == 1 else 'i'} da fare" if ctx["ha_compiti"] else "")
-    testa = [_intestazione(ctx["nome"], destra), Spacer(1, 2 * mm)]
+    testa = [_Testata(ctx["nome"], ctx["destra"]), Spacer(1, 3 * mm)]
     for b in blocchi:
         if b["sezione"] == "promemoria":
             pm = _box_promemoria(tenuti[b["id"]], oggi, fs)
             if pm:
                 testa += pm
+    if ctx["ha_compiti"]:
+        testa += [Spacer(1, 2.5 * mm), _Divisore("COMPITI DA FARE", max(fs - 0.5, 6))]
     testa.append(Spacer(1, 1.5 * mm))
     hh = sum(f.wrap(W, 10000)[1] + (getattr(f, "getSpaceBefore", lambda: 0)()) for f in testa) + 1 * mm
     bottom = 12 * mm
@@ -250,7 +456,7 @@ def _costruisci(ctx: dict, tolti: dict[str, int], cols: int, fs: float) -> tuple
             storia.append(Paragraph("Nessun compito in programma", ParagraphStyle(
                 "v", fontName="DV-B", fontSize=14, leading=18, textColor=GRIGIO)))
         for x in boxes:
-            storia += [KeepTogether([x]), Spacer(1, 2 * mm)]  # un riquadro non si spezza fra due colonne se può stare intero
+            storia += [KeepTogether([x]), Spacer(1, 4 * mm)]  # un riquadro non si spezza fra due colonne se può stare intero
         vuoto = vuoto and not tenuti[b["id"]]
     if vuoto and not any(b["sezione"] == "compiti" for b in blocchi):
         storia.append(Paragraph("Nessun elemento da mostrare", ParagraphStyle(
@@ -298,14 +504,14 @@ def genera(dati: dict[str, dict], alunni: list[str], sezioni: list[str], max_pag
     for sez in sezioni:
         if len(scelti) > 1 and sez in INDIVIDUALI:
             for a in scelti:
-                blocchi.append({"id": f"{a}:{sez}", "sezione": sez, "righe": _righe(sez, dati[a]),
+                blocchi.append({"id": f"{a}:{sez}", "sezione": sez, "righe": _righe(sez, dati[a]), "media": dati[a].get("media"),
                                 "titolo_box": f"{TITOLI[sez]} — {dati[a]['alunno']['nome']}"})
         elif scelti:
             blocchi.append({"id": f"{scelti[0]}:{sez}", "sezione": sez, "righe": _righe(sez, dati[scelti[0]]),
-                            "titolo_box": TITOLI[sez]})
+                            "media": dati[scelti[0]].get("media"), "titolo_box": TITOLI[sez]})
     ctx = {"oggi": ora.date(), "blocchi": blocchi, "nome": nome, "titolo": titolo,
            "generato": ora.strftime("%d/%m/%Y %H:%M"), "ha_compiti": "compiti" in sezioni,
-           "destra": "classe " + " / ".join(classi) + "<br/>{n}<br/>aggiornato " + ora.strftime("%d/%m %H:%M")}
+           "destra": ["classe " + " / ".join(classi), "aggiornato " + ora.strftime("%d/%m %H:%M")]}
     avvisi: list[str] = []
     ris = _migliore(ctx, {}, max_pagine)
     tolti: dict[str, int] = {}
