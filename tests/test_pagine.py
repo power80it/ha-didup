@@ -23,3 +23,12 @@ def test_meta_refresh():
 
 def test_nessun_link():
     assert prossimo_da_html("<html><body>Errore</body></html>") is None
+
+
+def test_javascript():
+    assert prossimo_da_html(f'<script>window.location.href = "{URL}";</script>') == URL
+    assert prossimo_da_html(f"<script>location.replace('{URL}')</script>") == URL
+
+
+def test_qualunque_link_oauth():
+    assert prossimo_da_html(f'<a href="{URL}&amp;x=1">vai</a>'.replace("consent_verifier", "altro")) == URL.replace("consent_verifier", "altro") + "&x=1"

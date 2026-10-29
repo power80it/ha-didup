@@ -48,3 +48,11 @@ def test_rifiuta_file_non_pdf(tmp_path):
     p = tmp_path / "note.txt"
     p.write_text("ciao")
     assert trova_pdf([{"slug": "x", "file": str(p)}], str(tmp_path), "x") is None
+
+
+def test_cartella_spostata_il_report_vecchio_resta_apribile(tmp_path):
+    vecchia, nuova = tmp_path / "www", tmp_path / "privata"
+    vecchia.mkdir(), nuova.mkdir()
+    registrato = _pdf(vecchia, "r_luca.pdf")  # percorso salvato prima dello spostamento
+    (vecchia / "r_luca.pdf").replace(nuova / "r_luca.pdf")
+    assert trova_pdf([{"slug": "luca", "file": registrato}], str(nuova), "luca") == (nuova / "r_luca.pdf").resolve()
