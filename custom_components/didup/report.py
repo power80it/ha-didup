@@ -85,8 +85,11 @@ def _hex(c) -> str:
 
 
 # ----------------------------------------------------------------------------------------------- elementi
-def _righe(sezione: str, dati: dict) -> list[dict]:
-    """Elementi della sezione, già nell'ordine di stampa (i dizionari del coordinator, eventualmente accorciati)."""
+def _righe(sezione: str, dati: dict, oggi: dt.date | None = None) -> list[dict]:
+    """Elementi della sezione, già nell'ordine di stampa (i dizionari del coordinator, eventualmente accorciati).
+    I promemoria di oggi non si stampano (restano nelle entità e nel calendario): il PDF è per quello che deve ancora venire."""
+    if sezione == "promemoria" and oggi is not None:
+        return [p for p in dati.get("promemoria", []) if str(p.get("data", ""))[:10] > oggi.isoformat()]
     if sezione == "voti":
         return dati.get("voti", [])[:MAX_VOTI]
     if sezione == "comunicazioni":
@@ -584,10 +587,10 @@ def genera(dati: dict[str, dict], alunni: list[str], sezioni: list[str], max_pag
     for sez in sezioni:
         if len(scelti) > 1 and sez in INDIVIDUALI:
             for a in scelti:
-                blocchi.append({"id": f"{a}:{sez}", "sezione": sez, "righe": _righe(sez, dati[a]), "media": dati[a].get("media"),
+                blocchi.append({"id": f"{a}:{sez}", "sezione": sez, "righe": _righe(sez, dati[a], ora.date()), "media": dati[a].get("media"),
                                 "titolo_box": f"{TITOLI[sez]} — {dati[a]['alunno']['nome']}"})
         elif scelti:
-            blocchi.append({"id": f"{scelti[0]}:{sez}", "sezione": sez, "righe": _righe(sez, dati[scelti[0]]),
+            blocchi.append({"id": f"{scelti[0]}:{sez}", "sezione": sez, "righe": _righe(sez, dati[scelti[0]], ora.date()),
                             "media": dati[scelti[0]].get("media"), "titolo_box": TITOLI[sez]})
     ctx = {"oggi": ora.date(), "blocchi": blocchi, "nome": nome, "titolo": titolo,
            "generato": ora.strftime("%d/%m/%Y %H:%M"), "ha_compiti": "compiti" in sezioni,
