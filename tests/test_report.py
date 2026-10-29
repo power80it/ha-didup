@@ -202,3 +202,13 @@ def test_assegnazione_con_vicini_in_colonne_diverse():
         for j in range(6):
             if i < j and report._vicini((1, *reg[i][2:]), (1, *reg[j][2:])):
                 assert a[f"k{i}"] != a[f"k{j}"]
+
+
+def test_promemoria_di_oggi_non_si_stampano():
+    oggi = dt.datetime(2026, 10, 22, 14)
+    d = {"luca": alunno("Luca", 3)}
+    d["luca"]["promemoria"] = [{"data": (oggi.date() + dt.timedelta(days=k)).isoformat(), "ora": "09:00", "ora_fine": "", "docente": "", "testo": f"V{k}"} for k in (0, 1, 3)]
+    assert [p["testo"] for p in report._righe("promemoria", d["luca"], oggi.date())] == ["V1", "V3"]
+    assert len(report._righe("promemoria", d["luca"])) == 3  # senza data di riferimento: nessun filtro (compatibilità)
+    report.genera(d, ["luca"], ["compiti", "promemoria"], 1, "Compiti", oggi)
+    assert sorted(k for k in report.ULTIMI_COLORI.assegna if k.startswith("p")) == ["p0", "p1"]  # due biglietti, non tre
