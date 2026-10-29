@@ -116,3 +116,46 @@ def test_pdf_unito_con_voti_separati():
     e = report.genera(d, ["luca", "paolo"], ["compiti", "voti"], 1, "Compiti e voti")
     assert e.pagine == 1
     assert b"%PDF" in e.pdf
+
+
+def test_biglietto_si_spezza_fra_colonne_senza_errori():
+    card = report._Card("arancio", [("LUN", "DV-B", 7, 7.0)], [f"riga {i}" for i in range(30)], 9, 20)
+    w, h = card.wrap(180, 10000)
+    parti = card.split(w, h / 2)
+    assert len(parti) == 2
+    assert parti[0].wrap(w, h)[1] <= h / 2
+    assert len(parti[0].righe) + len(parti[1].righe) == 30
+
+
+def test_biglietto_troppo_alto_per_lo_spazio_non_si_spezza_a_vuoto():
+    card = report._Card("rosso", [("X", "DV-B", 7, 0)], ["una riga"], 9, 200)  # minh più alto dello spazio: si passa alla colonna dopo
+    card.wrap(180, 100)
+    assert card.split(180, 100) == []
+
+
+def test_media_formattata_con_la_virgola():
+    assert report._formatta_media(6.94) == "6,9"
+    assert report._formatta_media(7) == "7,0"
+
+
+def test_giornata_molto_lunga_occupa_piu_colonne_e_pagine():
+    d = {"luca": alunno("Luca", 80)}
+    e = report.genera(d, ["luca"], ["compiti"], 3, "Compiti", dt.datetime(2026, 10, 22, 14))
+    assert e.non_stampati == 0 and pagine(e.pdf) <= 3
+
+
+def test_pdf_unito_con_note_e_voti_di_entrambi():
+    d = fratelli()
+    for k in d:
+        d[k]["note"] = [{"data": (OGGI - dt.timedelta(days=2)).isoformat(), "docente": "R.", "testo": "Nota"}]
+    e = report.genera(d, ["luca", "paolo"], TUTTE, 1, "Tutto", dt.datetime(2026, 10, 22, 14))
+    assert e.pdf.startswith(b"%PDF") and e.non_stampati == 0
+
+
+def test_promemoria_senza_orario_non_mostra_mezzanotte():
+    items = [{"data": (OGGI + dt.timedelta(days=3)).isoformat(), "ora": "00:00", "ora_fine": "", "docente": "", "testo": "Verifica"},
+             {"data": (OGGI + dt.timedelta(days=4)).isoformat(), "ora": "10:30", "ora_fine": "", "docente": "", "testo": "Test"}]
+    grid = report._box_promemoria(items, OGGI, 9)[2]
+    senza, con = grid._cellvalues[0][0], grid._cellvalues[0][2]
+    assert "00:00" not in [s[0] for s in senza.stub]
+    assert "10:30" in [s[0] for s in con.stub]
