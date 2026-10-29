@@ -60,6 +60,7 @@ async def async_setup_entry(hass: HomeAssistant, entry: DidupConfigEntry) -> boo
     coordinator.pianificatore.avvia()
     entry.async_on_unload(coordinator.pianificatore.ferma)
     await hass.config_entries.async_forward_entry_setups(entry, PIATTAFORME)
+    coordinator.pronto()  # ora le entità evento ascoltano: escono le novità della prima lettura
     entry.async_on_unload(entry.add_update_listener(_ricarica))
     return True
 

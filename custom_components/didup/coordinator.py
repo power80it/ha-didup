@@ -12,6 +12,7 @@ from homeassistant.config_entries import ConfigEntry, ConfigSubentry
 from homeassistant.core import HomeAssistant
 from homeassistant.components import persistent_notification
 from homeassistant.exceptions import ConfigEntryAuthFailed, HomeAssistantError
+from homeassistant.helpers import issue_registry as ir
 from homeassistant.helpers.dispatcher import async_dispatcher_send
 from homeassistant.helpers.storage import Store
 from homeassistant.helpers.update_coordinator import DataUpdateCoordinator, UpdateFailed
@@ -36,6 +37,11 @@ RILEVATORI = [
 ]
 
 
+SOGLIA_RIPARAZIONI = 3  # letture fallite di fila prima dell'avviso in «Riparazioni»
+# il contatore sta in hass.data: a ogni nuovo tentativo di avvio (setup_retry) il coordinator viene ricreato
+CHIAVE_FALLITI = f"{DOMAIN}_letture_fallite"
+
+
 class DidupCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
     def __init__(self, hass: HomeAssistant, entry: ConfigEntry, api: DidupApi) -> None:
         minuti = max(INTERVALLO_MIN, int(entry.options.get(OPT_INTERVALLO, INTERVALLO_DEFAULT)))
@@ -44,6 +50,8 @@ class DidupCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         self._store: Store = Store(hass, STORE_VERSION, f"{DOMAIN}_{entry.entry_id}")
         self._visti: dict[str, list[str]] | None = None  # None = mai inizializzato -> primo giro senza eventi
         self.ultimo_ok: dt.datetime | None = None
+        self._pronto = False  # le entità evento esistono? prima non c'è nessuno ad ascoltare gli eventi
+        self._in_coda: list[tuple[str, str, dict]] = []
         self._lock_forzato = asyncio.Lock()
         self.firma: str = ""
         self.pianificatore = None  # impostato da async_setup_entry
@@ -73,7 +81,15 @@ class DidupCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         except DidupAuthError as e:
             raise ConfigEntryAuthFailed(str(e)) from e
         except DidupError as e:
+            falliti = self.hass.data.setdefault(CHIAVE_FALLITI, {})
+            self._falliti = falliti[self.config_entry.entry_id] = falliti.get(self.config_entry.entry_id, 0) + 1
+            if self._falliti >= SOGLIA_RIPARAZIONI:
+                ir.async_create_issue(
+                    self.hass, DOMAIN, self._id_riparazione, is_fixable=False, severity=ir.IssueSeverity.ERROR,
+                    translation_key="lettura_fallita", translation_placeholders={"errore": str(e), "falliti": str(self._falliti)})
             raise UpdateFailed(str(e)) from e
+        self.hass.data.setdefault(CHIAVE_FALLITI, {}).pop(self.config_entry.entry_id, None)
+        ir.async_delete_issue(self.hass, DOMAIN, self._id_riparazione)
 
         oggi = dt.date.today()
         includi_oggi = self.config_entry.options.get(OPT_INCLUDI_OGGI, False)
@@ -124,8 +140,22 @@ class DidupCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
         # le funzioni appena attivate non generano eventi sull'arretrato: restano nel dizionario dopo il primo giro
         self._visti = {**(self._visti or {}), **attuali}
         await self._salva()
+        if not self._pronto:
+            self._in_coda.extend(nuovi)  # prima lettura dopo l'avvio: le entità non ci sono ancora, si emette in `pronto()`
+            return
         for s, tipo, item in nuovi:
             async_dispatcher_send(self.hass, SIGNAL_EVENTO, s, tipo, item)
+
+    def pronto(self) -> None:
+        """Da chiamare quando le entità evento sono state create: emette le novità trovate nella prima lettura."""
+        self._pronto = True
+        coda, self._in_coda = self._in_coda, []
+        for s, tipo, item in coda:
+            async_dispatcher_send(self.hass, SIGNAL_EVENTO, s, tipo, item)
+
+    @property
+    def _id_riparazione(self) -> str:
+        return f"lettura_fallita_{self.config_entry.entry_id}"
 
     async def async_aggiorna_forzato(self) -> None:
         """Rilegge subito da Argo (pulsante «Aggiorna da Argo»), fuori dal ritmo normale.
