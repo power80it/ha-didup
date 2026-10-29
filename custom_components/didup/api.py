@@ -81,19 +81,21 @@ class DidupApi:
         if not loc:
             raise DidupAuthError("credenziali rifiutate")
         code = None
+        passo = "login"
         for _ in range(10):
             mc = _CODE_RE.search(loc)
             if mc:
                 code = mc.group(1)
                 break
             async with self._s.get(loc, allow_redirects=False, timeout=TIMEOUT) as r:
+                passo = f"{r.status} {r.url.host}{r.url.path}"
                 loc = r.headers.get("Location")
                 if not loc and r.status == 200:
                     loc = prossimo_da_html(await r.text())
             if not loc:
                 break
         if not code:
-            raise DidupError("codice di autorizzazione non trovato")
+            raise DidupError(f"codice di autorizzazione non trovato (ultimo passo: {passo})")
         data = {"code": code, "grant_type": "authorization_code", "redirect_uri": REDIRECT_URI,
                 "code_verifier": verifier, "client_id": CLIENT_ID}
         async with self._s.post(TOKEN_URL, data=data, timeout=TIMEOUT) as r:
