@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.6.2
+- Nel PDF non compaiono più i promemoria di oggi (restano nelle entità e nel calendario): il report è per quello che deve ancora venire, e una verifica di stamattina non serve più nel pomeriggio.
+
 ## 0.6.1
 - I colori del PDF non indicano più l'urgenza: ogni biglietto dei promemoria e dei giorni ha un colore diverso, da una palette di 5 (azzurro, lilla, pesca, menta, ocra), calcolato sulla posizione reale in modo che due biglietti vicini (affiancati, uno sopra l'altro, anche a cavallo del divisore) non abbiano mai lo stesso colore.
 - Voti, note e comunicazioni sono sempre grigio ardesia, un colore che non compare nella palette dei giorni.
