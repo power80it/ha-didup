@@ -17,6 +17,8 @@ from hashlib import sha256
 
 import aiohttp
 
+from .pagine import prossimo_da_html
+
 _LOGGER = logging.getLogger(__name__)
 
 ENDPOINT = "https://www.portaleargo.it/appfamiglia/api/rest/"
@@ -86,6 +88,8 @@ class DidupApi:
                 break
             async with self._s.get(loc, allow_redirects=False, timeout=TIMEOUT) as r:
                 loc = r.headers.get("Location")
+                if not loc and r.status == 200:
+                    loc = prossimo_da_html(await r.text())
             if not loc:
                 break
         if not code:
