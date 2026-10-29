@@ -1,9 +1,10 @@
 """Generazione del PDF dei report (reportlab, nessun Home Assistant). Aspetto «biglietto» di DidUP (dalla 0.6.0).
 
 Testata sfumata blu/verde acqua con taglio arancio (nome a sinistra, classe e aggiornamento a destra), promemoria come
-biglietti con talloncino, un riquadro-biglietto per giorno (rosso: oggi/domani, arancio: entro 7 giorni, blu: oltre) su 2-3
+biglietti con talloncino, un riquadro-biglietto per giorno su 2-3
 colonne con le caselle ▢, e riquadri analoghi per voti, note e comunicazioni. Ogni biglietto ha il talloncino colorato a
-sinistra e un filo del colore del giorno sul bordo superiore.
+sinistra e un filo dello stesso colore sul bordo superiore. I colori ruotano senza significato (palette di 5) e non sono mai uguali
+fra biglietti vicini; voti, note e comunicazioni sono sempre ardesia.
 
 Il numero massimo di pagine è un limite rigido. Per far stare tutto si prova prima a rimpicciolire il carattere (da 11 a 6 pt, 2-3
 colonne); solo se nemmeno al minimo ci sta si tolgono elementi dalle sezioni più lunghe (equo fra le sezioni, partendo dagli ultimi)
@@ -39,11 +40,11 @@ MAX_COMUNICAZIONI = 10
 FONTS = Path(__file__).parent / "fonts"  # DejaVu (licenza in fonts/LICENSE.txt): copre accenti, ▢ e simboli
 INK = colors.HexColor("#1f2933")
 GRIGIO = colors.HexColor("#6b7785")
-BLU = colors.HexColor("#2f5d8a")
 ROSSO, ARANCIO = colors.HexColor("#c0392b"), colors.HexColor("#d9822b")
 VERDE = colors.HexColor("#2e7d32")
-BG = {"rosso": colors.HexColor("#fdecea"), "arancio": colors.HexColor("#fff3e3"), "blu": colors.HexColor("#eaf1f8")}
-COL = {"rosso": ROSSO, "arancio": ARANCIO, "blu": BLU}
+# colori dei biglietti dei promemoria e dei giorni: nessun significato (non indicano l'urgenza), ruotano senza mai ripetersi fra vicini
+PALETTE = [colors.HexColor("#3f8fcf"), colors.HexColor("#8f7bd0"), colors.HexColor("#e88a5c"), colors.HexColor("#3aa68a"), colors.HexColor("#c9a227")]
+NEUTRO = colors.HexColor("#5f6b7a")  # ardesia: voti, note e avvisi (non è nella palette, quindi non si confonde coi giorni)
 BLU_CH, VERDE_ACQUA = colors.HexColor("#1e88e5"), colors.HexColor("#12b3a8")  # sfumatura della testata
 ARA_CH, ARA_SC = colors.HexColor("#fbb34a"), colors.HexColor("#f08a2b")  # taglio arancio della testata
 MARG = 10 * mm
@@ -68,10 +69,6 @@ def _fonts() -> None:
 
 def _h(s) -> str:
     return escape(str(s or "")).replace("\n", "<br/>")
-
-
-def tono(giorni: int) -> str:
-    return "rosso" if giorni <= 1 else "arancio" if giorni <= 7 else "blu"
 
 
 def _breve(iso: str, oggi: dt.date) -> tuple[str, int]:
@@ -99,6 +96,72 @@ def _righe(sezione: str, dati: dict) -> list[dict]:
 
 MESI = ["GEN", "FEB", "MAR", "APR", "MAG", "GIU", "LUG", "AGO", "SET", "OTT", "NOV", "DIC"]
 GRIGIO_BORDO = colors.HexColor("#d5dbe1")
+
+
+class _Colori:
+    """Colore di ogni biglietto (promemoria e giorni). Prima passata: colori a rotazione e registrazione di dove finisce ogni biglietto;
+    seconda passata: i colori calcolati da `_assegna_colori` sulla posizione reale, così due biglietti vicini non sono mai uguali."""
+
+    def __init__(self, assegna: dict[str, int] | None = None):
+        self.assegna, self.reg, self._n, self._dati = assegna or {}, [], 0, {}
+
+    def colore(self, chiave: str):
+        if chiave not in self._dati:
+            self._dati[chiave] = self.assegna.get(chiave, self._n % len(PALETTE))
+            self._n += 1
+        return PALETTE[self._dati[chiave]]
+
+
+ULTIMI_COLORI: _Colori | None = None  # l'ultima assegnazione (per i test)
+
+
+def _vicini(a: tuple, b: tuple) -> bool:
+    """a, b = (pagina, x, y, larghezza, altezza). Vicini: affiancati (anche in colonne diverse) o uno sopra l'altro a meno di 14 mm
+    (il divisore «Compiti da fare» non li separa abbastanza)."""
+    if a[0] != b[0]:
+        return False
+    _, ax, ay, aw, ah = a
+    _, bx, by, bw, bh = b
+    sov_x = min(ax + aw, bx + bw) - max(ax, bx)
+    sov_y = min(ay + ah, by + bh) - max(ay, by)
+    return (sov_x > 0 and max(ay - (by + bh), by - (ay + ah)) <= 14 * mm) or (sov_y > 0 and max(ax - (bx + bw), bx - (ax + aw)) <= 6 * mm)
+
+
+def _assegna_colori(reg: list[tuple]) -> dict[str, int]:
+    """Un indice di PALETTE per chiave, mai uguale fra biglietti vicini. Colori a rotazione in ordine di lettura; ricerca con ritorno
+    indietro se serve (con un limite di tentativi: poi si accetta il meno peggio)."""
+    n = len(PALETTE)
+    rett: dict[str, list[tuple]] = {}
+    for k, pag, x, y, w, h in reg:
+        rett.setdefault(k, []).append((pag, x, y, w, h))
+    chiavi = sorted(rett, key=lambda k: min((r[0], -(r[2] + r[4]), r[1]) for r in rett[k]))
+    vic = {k: {j for j in chiavi if j != k and any(_vicini(a, b) for a in rett[k] for b in rett[j])} for k in chiavi}
+    res: dict[str, int] = {}
+    passi = [0]
+
+    def prova(i: int) -> bool:
+        if i == len(chiavi):
+            return True
+        passi[0] += 1
+        if passi[0] > 20000:
+            return False
+        k = chiavi[i]
+        usati = {res[j] for j in vic[k] if j in res}
+        ultimo = res[chiavi[i - 1]] if i else -1
+        for c in sorted(range(n), key=lambda c: (c - ultimo - 1) % n):
+            if c not in usati:
+                res[k] = c
+                if prova(i + 1):
+                    return True
+                del res[k]
+        return False
+
+    if not prova(0):
+        res = {}
+        for i, k in enumerate(chiavi):  # ripiego: il colore meno usato dai vicini
+            usati = [res[j] for j in vic[k] if j in res]
+            res[k] = min(range(n), key=lambda c: (usati.count(c), (c - (res[chiavi[i - 1]] if i else -1) - 1) % n))
+    return res
 
 
 def _k(fs: float) -> float:
@@ -214,9 +277,9 @@ class _Card(Flowable):
     colorato sul bordo superiore. Si spezza riga per riga fra colonne e pagine (il talloncino si ripete)."""
     SW = 15 * mm
 
-    def __init__(self, t: str, stub: list, righe: list[str], fs: float, minh: float):
+    def __init__(self, colore, stub: list, righe: list[str], fs: float, minh: float, chiave: str | None = None, colori: _Colori | None = None):
         super().__init__()
-        self.t, self.stub, self.righe, self.fs, self.minh = t, stub, righe, fs, minh
+        self.colore, self.stub, self.righe, self.fs, self.minh, self.chiave, self.colori = colore, stub, righe, fs, minh, chiave, colori
         self.gap = 1.0 * mm * _k(fs)
 
     def _layout(self, aw):
@@ -244,10 +307,14 @@ class _Card(Flowable):
             return []
         if n == len(self.righe):
             return [self]
-        return [_Card(self.t, self.stub, self.righe[:n], self.fs, self.minh), _Card(self.t, self.stub, self.righe[n:], self.fs, self.minh)]
+        return [_Card(self.colore, self.stub, self.righe[:n], self.fs, self.minh, self.chiave, self.colori),
+                _Card(self.colore, self.stub, self.righe[n:], self.fs, self.minh, self.chiave, self.colori)]
 
     def draw(self):
-        c, w, h, col, sw = self.canv, self.w, self.h, COL[self.t], self.SW
+        c, w, h, col, sw = self.canv, self.w, self.h, self.colore, self.SW
+        if self.colori is not None and self.chiave:
+            x0, y0 = c.absolutePosition(0, 0)
+            self.colori.reg.append((self.chiave, c.getPageNumber(), x0, y0, w, h))
         c.setFillColor(colors.white)
         c.setStrokeColor(GRIGIO_BORDO)
         c.setLineWidth(0.6)
@@ -277,9 +344,9 @@ class _Biglietto(Flowable):
     in cima al corpo."""
     SW = 19 * mm
 
-    def __init__(self, t: str, stub: list, testo: str, docente: str, fs: float):
+    def __init__(self, colore, stub: list, testo: str, docente: str, fs: float, chiave: str | None = None, colori: _Colori | None = None):
         super().__init__()
-        self.t, self.stub, self.testo, self.docente, self.fs = t, stub, testo, docente, fs
+        self.colore, self.stub, self.testo, self.docente, self.fs, self.chiave, self.colori = colore, stub, testo, docente, fs, chiave, colori
         self.k = _k(fs)
 
     def wrap(self, aw, ah):
@@ -293,7 +360,10 @@ class _Biglietto(Flowable):
         return self.w, self.h
 
     def draw(self):
-        c, w, h, col, sw = self.canv, self.w, self.h, COL[self.t], self.SW
+        c, w, h, col, sw = self.canv, self.w, self.h, self.colore, self.SW
+        if self.colori is not None and self.chiave:
+            x0, y0 = c.absolutePosition(0, 0)
+            self.colori.reg.append((self.chiave, c.getPageNumber(), x0, y0, w, h))
         c.setFillColor(colors.white)
         c.setStrokeColor(GRIGIO_BORDO)
         c.setLineWidth(0.6)
@@ -315,7 +385,7 @@ class _Biglietto(Flowable):
             y -= ph + 0.8 * mm
 
 
-def _box_promemoria(items: list[dict], oggi: dt.date, fs: float):
+def _box_promemoria(items: list[dict], oggi: dt.date, fs: float, colori: _Colori):
     if not items:
         return None
     n = 3  # sempre tre colonne: con pochi promemoria i biglietti restano della stessa misura, a sinistra
@@ -327,7 +397,6 @@ def _box_promemoria(items: list[dict], oggi: dt.date, fs: float):
     dati = [[""] * ncol for _ in range(righe_n * 2 - 1)]
     for i, p in enumerate(items):
         lab, delta = _breve(p["data"], oggi)
-        t = tono(delta)
         gs, data = lab.split(" ", 1)
         ora = p.get("ora") if p.get("ora") not in ("", "00:00") else ""  # Argo manda 00:00 quando non c'è un orario
         stub = [({0: "OGGI", 1: "DOMANI"}.get(delta, gs.upper()), "DV-B", 7, 6.5 if ora else 4.5),
@@ -335,7 +404,7 @@ def _box_promemoria(items: list[dict], oggi: dt.date, fs: float):
         if ora:
             stub.append((ora, "DV", 7.5, -6.0))
         r, col = divmod(i, n)
-        dati[r * 2][col * 2] = _Biglietto(t, stub, p["testo"], p.get("docente", ""), pfs)
+        dati[r * 2][col * 2] = _Biglietto(colori.colore(f"p{i}"), stub, p["testo"], p.get("docente", ""), pfs, f"p{i}", colori)
     grid = Table(dati, colWidths=[x for i in range(n) for x in ([cw] if i == n - 1 else [cw, gap])],
                  rowHeights=[None if i % 2 == 0 else 1.6 * mm for i in range(righe_n * 2 - 1)])
     grid.setStyle(TableStyle([("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0),
@@ -348,7 +417,7 @@ def _formatta_media(m) -> str:
     return f"{m:.1f}".replace(".", ",")
 
 
-def _boxes_blocco(b: dict, righe: list[dict], oggi: dt.date, fs: float, colw: float) -> list:
+def _boxes_blocco(b: dict, righe: list[dict], oggi: dt.date, fs: float, colw: float, colori: _Colori) -> list:
     """Riquadri di un blocco: uno per giorno per i compiti, uno solo per le altre sezioni."""
     sez = b["sezione"]
     minh = 22 * mm * _k(fs)
@@ -359,13 +428,14 @@ def _boxes_blocco(b: dict, righe: list[dict], oggi: dt.date, fs: float, colw: fl
             giorni.setdefault(x["data"], []).append(x)
         for d, xs in giorni.items():
             _, delta = _breve(d, oggi)
-            t = tono(delta)
+            chiave = f"{b['id']}:{d}"
+            colore = colori.colore(chiave)
             data = dt.date.fromisoformat(d[:10])
             su = {0: "OGGI", 1: "DOMANI"}.get(delta, ABBR[data.weekday()].upper())
             stub = [(su, "DV-B", 6.5 if delta in (0, 1) else 7, 7.0), (str(data.day), "DV-B", 19, -1.0), (MESI[data.month - 1], "DV-B", 7.5, -5.5)]
-            casella = f"<font color='{_hex(COL[t])}' size='{fs + 3:.1f}'>▢</font>"
-            rr = [f"{casella}&nbsp;<font name='DV-B' color='{_hex(COL[t])}'>{_h(x['materia'])}</font>: {_h(x['testo'])}" for x in xs]
-            out.append(_Card(t, stub, rr, fs, minh))
+            casella = f"<font color='{_hex(colore)}' size='{fs + 3:.1f}'>▢</font>"
+            rr = [f"{casella}&nbsp;<font name='DV-B' color='{_hex(colore)}'>{_h(x['materia'])}</font>: {_h(x['testo'])}" for x in xs]
+            out.append(_Card(colore, stub, rr, fs, minh, chiave, colori))
         return out
     if not righe:
         return []
@@ -382,8 +452,8 @@ def _boxes_blocco(b: dict, righe: list[dict], oggi: dt.date, fs: float, colw: fl
                 ("media" if media is not None else "voti", "DV", 6.5, -5.5)]
         if "—" in b["titolo_box"]:  # PDF unito: serve il nome di chi ha preso i voti
             stub.insert(0, (b["titolo_box"].split("—", 1)[1].strip().upper()[:9], "DV-B", 6.3, 10.5))
-            return [_Card("blu", stub, rr, fs, minh * 1.15)]
-        return [_Card("blu", stub, rr, fs, minh)]
+            return [_Card(NEUTRO, stub, rr, fs, minh * 1.15)]
+        return [_Card(NEUTRO, stub, rr, fs, minh)]
     if sez == "note":
         rr = []
         for x in righe:
@@ -392,19 +462,29 @@ def _boxes_blocco(b: dict, righe: list[dict], oggi: dt.date, fs: float, colw: fl
             rr.append(f"<font name='DV-B'>{lab}</font>{doc}: {_h(x['testo'])}")
         if "—" in b["titolo_box"]:  # PDF unito: serve il nome dell'alunno, quindi il talloncino è alto come gli altri
             stub = [(b["titolo_box"].split("—", 1)[1].strip().upper()[:9], "DV-B", 6.3, 8.0), ("NOTE", "DV-B", 7, 3.5), (str(len(righe)), "DV-B", 16, -4.5)]
-            return [_Card("rosso", stub, rr, fs, minh)]
-        return [_Card("rosso", [("NOTE", "DV-B", 7, 3.5), (str(len(righe)), "DV-B", 16, -3.5)], rr, fs, minh * 0.75)]
+            return [_Card(NEUTRO, stub, rr, fs, minh)]
+        return [_Card(NEUTRO, [("NOTE", "DV-B", 7, 3.5), (str(len(righe)), "DV-B", 16, -3.5)], rr, fs, minh * 0.75)]
     rr = []  # comunicazioni
     for x in righe:
         lab, _ = _breve(x["data"], oggi)
         cat = f" · {_h(x['categoria'])}" if x.get("categoria") else ""
         testo = x["testo"][:200] + ("…" if len(x["testo"]) > 200 else "")
         rr.append(f"<font name='DV-B'>{lab}</font><font color='#6b7785'>{cat}</font>: {_h(testo)}")
-    return [_Card("blu", [("AVVISI", "DV-B", 6.5, 3.5), (str(len(righe)), "DV-B", 16, -3.5)], rr, fs, minh)]
+    return [_Card(NEUTRO, [("AVVISI", "DV-B", 6.5, 3.5), (str(len(righe)), "DV-B", 16, -3.5)], rr, fs, minh)]
 
 
 # ------------------------------------------------------------------------------------------- impaginazione
 def _costruisci(ctx: dict, tolti: dict[str, int], cols: int, fs: float) -> tuple[bytes, int]:
+    """Due passate: la prima fa vedere dove finiscono i biglietti, la seconda li colora in modo che i vicini siano sempre diversi."""
+    global ULTIMI_COLORI
+    prima = _Colori()
+    _impagina(ctx, tolti, cols, fs, prima)
+    ULTIMI_COLORI = _Colori(_assegna_colori(prima.reg))
+    ris = _impagina(ctx, tolti, cols, fs, ULTIMI_COLORI)
+    return ris
+
+
+def _impagina(ctx: dict, tolti: dict[str, int], cols: int, fs: float, colori: _Colori) -> tuple[bytes, int]:
     oggi, blocchi = ctx["oggi"], ctx["blocchi"]
     gap = 3 * mm
     colw = (W - (cols - 1) * gap) / cols
@@ -412,7 +492,7 @@ def _costruisci(ctx: dict, tolti: dict[str, int], cols: int, fs: float) -> tuple
     testa = [_Testata(ctx["nome"], ctx["destra"]), Spacer(1, 3 * mm)]
     for b in blocchi:
         if b["sezione"] == "promemoria":
-            pm = _box_promemoria(tenuti[b["id"]], oggi, fs)
+            pm = _box_promemoria(tenuti[b["id"]], oggi, fs, colori)
             if pm:
                 testa += pm
     if ctx["ha_compiti"]:
@@ -451,7 +531,7 @@ def _costruisci(ctx: dict, tolti: dict[str, int], cols: int, fs: float) -> tuple
         if b["sezione"] == "promemoria":
             vuoto = vuoto and not tenuti[b["id"]]
             continue
-        boxes = _boxes_blocco(b, tenuti[b["id"]], oggi, fs, colw)
+        boxes = _boxes_blocco(b, tenuti[b["id"]], oggi, fs, colw, colori)
         if b["sezione"] == "compiti" and not boxes:
             storia.append(Paragraph("Nessun compito in programma", ParagraphStyle(
                 "v", fontName="DV-B", fontSize=14, leading=18, textColor=GRIGIO)))
