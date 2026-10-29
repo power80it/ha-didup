@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.6.0
+- Nuova grafica «biglietto» per il PDF dei report: testata sfumata blu/verde acqua con taglio arancio (nome a sinistra, classe e aggiornamento a destra), promemoria come biglietti con talloncino colorato (giorno, data, ora), divisore «Compiti da fare», un biglietto per giorno con talloncino (giorno, numero, mese) e un filo del colore del giorno sul bordo superiore, caselle ▢ arrotondate. Voti, note e comunicazioni hanno lo stesso stile.
+- Il contenuto del report non cambia. Nella testata non compare più il numero di compiti da fare. Nei giorni «oggi» e «domani» il talloncino dice OGGI o DOMANI al posto del giorno della settimana.
+- I promemoria senza orario (Argo manda «00:00») non mostrano più l'ora.
+- Il limite di pagine funziona come prima (il carattere si rimpicciolisce prima di togliere elementi); i riquadri troppo alti si spezzano fra le colonne.
+
 ## 0.5.2
 - Le novità trovate nella prima lettura dopo un avvio o una ricarica non si perdono più: vengono emesse appena le entità evento sono pronte (prima si perdevano e risultavano comunque «viste»).
 - Dopo 3 letture da Argo fallite di fila compare un avviso in «Riparazioni» con l'errore; sparisce da solo alla prima lettura riuscita.
