@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.6.1
+- I colori del PDF non indicano più l'urgenza: ogni biglietto dei promemoria e dei giorni ha un colore diverso, da una palette di 5 (azzurro, lilla, pesca, menta, ocra), calcolato sulla posizione reale in modo che due biglietti vicini (affiancati, uno sopra l'altro, anche a cavallo del divisore) non abbiano mai lo stesso colore.
+- Voti, note e comunicazioni sono sempre grigio ardesia, un colore che non compare nella palette dei giorni.
+- Tutte le materie di una giornata hanno il colore del suo biglietto.
+
 ## 0.6.0
 - Nuova grafica «biglietto» per il PDF dei report: testata sfumata blu/verde acqua con taglio arancio (nome a sinistra, classe e aggiornamento a destra), promemoria come biglietti con talloncino colorato (giorno, data, ora), divisore «Compiti da fare», un biglietto per giorno con talloncino (giorno, numero, mese) e un filo del colore del giorno sul bordo superiore, caselle ▢ arrotondate. Voti, note e comunicazioni hanno lo stesso stile.
 - Il contenuto del report non cambia. Nella testata non compare più il numero di compiti da fare. Nei giorni «oggi» e «domani» il talloncino dice OGGI o DOMANI al posto del giorno della settimana.
