@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.5.1
+- Correzione del login: dal 29/10/2026 Argo risponde con una pagina HTML («Accesso completato… Continua») invece di un redirect nel passo di consenso; l'integrazione ora segue il link e torna a leggere i dati (prima restava in «nuovo tentativo» con «codice di autorizzazione non trovato»).
+
 ## 0.5.0
 - Nuova vista `pdf` della card: un pulsante per ogni alunno che apre nel browser o nell'app l'ultimo PDF prodotto, con login (link firmato di breve durata) e senza rendere pubblica la cartella.
 - Nuovo indirizzo autenticato `/api/didup/pdf/<report>/<alunno>`: serve solo i PDF prodotti dall'integrazione, dentro la cartella del report.
