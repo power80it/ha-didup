@@ -119,7 +119,7 @@ def test_pdf_unito_con_voti_separati():
 
 
 def test_biglietto_si_spezza_fra_colonne_senza_errori():
-    card = report._Card("arancio", [("LUN", "DV-B", 7, 7.0)], [f"riga {i}" for i in range(30)], 9, 20)
+    card = report._Card(report.PALETTE[0], [("LUN", "DV-B", 7, 7.0)], [f"riga {i}" for i in range(30)], 9, 20)
     w, h = card.wrap(180, 10000)
     parti = card.split(w, h / 2)
     assert len(parti) == 2
@@ -128,7 +128,7 @@ def test_biglietto_si_spezza_fra_colonne_senza_errori():
 
 
 def test_biglietto_troppo_alto_per_lo_spazio_non_si_spezza_a_vuoto():
-    card = report._Card("rosso", [("X", "DV-B", 7, 0)], ["una riga"], 9, 200)  # minh più alto dello spazio: si passa alla colonna dopo
+    card = report._Card(report.NEUTRO, [("X", "DV-B", 7, 0)], ["una riga"], 9, 200)  # minh più alto dello spazio: si passa alla colonna dopo
     card.wrap(180, 100)
     assert card.split(180, 100) == []
 
@@ -155,7 +155,50 @@ def test_pdf_unito_con_note_e_voti_di_entrambi():
 def test_promemoria_senza_orario_non_mostra_mezzanotte():
     items = [{"data": (OGGI + dt.timedelta(days=3)).isoformat(), "ora": "00:00", "ora_fine": "", "docente": "", "testo": "Verifica"},
              {"data": (OGGI + dt.timedelta(days=4)).isoformat(), "ora": "10:30", "ora_fine": "", "docente": "", "testo": "Test"}]
-    grid = report._box_promemoria(items, OGGI, 9)[2]
+    grid = report._box_promemoria(items, OGGI, 9, report._Colori())[2]
     senza, con = grid._cellvalues[0][0], grid._cellvalues[0][2]
     assert "00:00" not in [s[0] for s in senza.stub]
     assert "10:30" in [s[0] for s in con.stub]
+
+
+def _rett(colori):
+    r = {}
+    for k, pag, x, y, w, h in colori.reg:
+        r.setdefault(k, []).append((pag, x, y, w, h))
+    return r
+
+
+def test_biglietti_vicini_mai_dello_stesso_colore():
+    d = {"luca": alunno("Luca", 40)}
+    d["luca"]["promemoria"] = [{"data": (OGGI + dt.timedelta(days=2 + i)).isoformat(), "ora": "", "ora_fine": "", "docente": "", "testo": f"Verifica {i}"} for i in range(7)]
+    for max_p in (1, 2, 3):
+        report.genera(d, ["luca"], ["compiti", "promemoria"], max_p, "Compiti", dt.datetime(2026, 10, 22, 14))
+        col = report.ULTIMI_COLORI
+        rett = _rett(col)
+        assert len(rett) >= 8  # promemoria + giorni
+        assert {col.assegna[k] for k in rett} <= set(range(len(report.PALETTE)))
+        for a in rett:
+            for b in rett:
+                if a < b and any(report._vicini(x, y) for x in rett[a] for y in rett[b]):
+                    assert col.assegna[a] != col.assegna[b], (a, b)
+
+
+def test_colori_non_dipendono_dall_urgenza():
+    # stessa data a distanza di giorni: il colore dipende dalla posizione, non da quanti giorni mancano
+    d = {"luca": alunno("Luca", 3)}
+    report.genera(d, ["luca"], ["compiti"], 1, "Compiti", dt.datetime(2026, 10, 22, 14))
+    assert len(set(report.ULTIMI_COLORI.assegna.values())) >= 2
+
+
+def test_palette_senza_il_colore_neutro():
+    assert len(report.PALETTE) == 5 and report.NEUTRO not in report.PALETTE
+
+
+def test_assegnazione_con_vicini_in_colonne_diverse():
+    # due colonne affiancate, 3 biglietti per colonna: a destra non ci sono mai gli stessi colori del vicino di sinistra
+    reg = [(f"k{i}", 1, 10 + (i // 3) * 300, 700 - (i % 3) * 120, 280, 100) for i in range(6)]
+    a = report._assegna_colori(reg)
+    for i in range(6):
+        for j in range(6):
+            if i < j and report._vicini((1, *reg[i][2:]), (1, *reg[j][2:])):
+                assert a[f"k{i}"] != a[f"k{j}"]
