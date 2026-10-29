@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.5.2
+- Le novità trovate nella prima lettura dopo un avvio o una ricarica non si perdono più: vengono emesse appena le entità evento sono pronte (prima si perdevano e risultavano comunque «viste»).
+- Dopo 3 letture da Argo fallite di fila compare un avviso in «Riparazioni» con l'errore; sparisce da solo alla prima lettura riuscita.
+- Login più tollerante con le pagine HTML di Argo (link, meta-refresh, JavaScript) e, se non trova il codice, l'errore dice a che passo si è fermato.
+- I PDF già prodotti restano apribili anche se la cartella del report viene spostata (conta il nome del file, cercato nella cartella attuale).
+
 ## 0.5.1
 - Correzione del login: dal 29/10/2026 Argo risponde con una pagina HTML («Accesso completato… Continua») invece di un redirect nel passo di consenso; l'integrazione ora segue il link e torna a leggere i dati (prima restava in «nuovo tentativo» con «codice di autorizzazione non trovato»).
 
