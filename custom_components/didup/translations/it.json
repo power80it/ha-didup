@@ -248,5 +248,11 @@
         "reconfigure_successful": "Report aggiornato"
       }
     }
+  },
+  "issues": {
+    "lettura_fallita": {
+      "title": "Lettura da Argo non riuscita",
+      "description": "DidUP non riesce a leggere i dati da Argo da {falliti} tentativi di fila. Ultimo errore: {errore}. Finché non riprende non arrivano nuovi compiti, voti o PDF aggiornati. Se il problema persiste dopo qualche ora, Argo potrebbe aver cambiato il login: controlla gli aggiornamenti di DidUP in HACS o apri una segnalazione su GitHub."
+    }
   }
 }

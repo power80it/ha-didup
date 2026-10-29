@@ -248,5 +248,11 @@
         "reconfigure_successful": "Report updated"
       }
     }
+  },
+  "issues": {
+    "lettura_fallita": {
+      "title": "Reading from Argo failed",
+      "description": "DidUP has been unable to read data from Argo for {falliti} attempts in a row. Last error: {errore}. Until it recovers no new homework, grades or updated PDFs will arrive. If it persists for hours, Argo may have changed its login: check for DidUP updates in HACS or open an issue on GitHub."
+    }
   }
 }
