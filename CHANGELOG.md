@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.6.4
+- Card, vista PDF: nell'app di Home Assistant (Android e iOS) il pulsante del PDF scarica il file invece di aprire una scheda che l'app non gestisce; sotto i pulsanti compare per 4 minuti un link da toccare se il download automatico non parte. Nel browser il comportamento è invariato (nuova scheda).
+
 ## 0.6.3
 - Argo ha spostato l'API dei dati da `www.portaleargo.it/appfamiglia/api/rest/` (ora risponde 503) a `didattica.portaleargo.it/famiglia/api/`, e il nuovo indirizzo vuole le intestazioni `os-type` e `argo-client-version` che manda anche il sito web. Senza questo fix la lettura falliva sempre («lettura fallita: unexpected character…») e tutte le entità diventavano non disponibili. Il login OAuth e il formato dei dati sono invariati.
 
