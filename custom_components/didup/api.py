@@ -21,7 +21,9 @@ from .pagine import prossimo_da_html
 
 _LOGGER = logging.getLogger(__name__)
 
-ENDPOINT = "https://www.portaleargo.it/appfamiglia/api/rest/"
+ENDPOINT = "https://didattica.portaleargo.it/famiglia/api/"  # dal 17/11/2026; il vecchio .../appfamiglia/api/rest/ risponde 503
+# Intestazioni che il client web di Argo manda a ogni chiamata (il nuovo backend le richiede).
+CLIENT_HEADERS = {"os-type": "WEB", "argo-client-version": "4.3.0"}
 CHALLENGE_URL = "https://auth.portaleargo.it/oauth2/auth"
 LOGIN_URL = "https://www.portaleargo.it/auth/sso/login"
 TOKEN_URL = "https://auth.portaleargo.it/oauth2/token"
@@ -106,7 +108,7 @@ class DidupApi:
         body = {"clientID": secrets.token_urlsafe(64), "lista-x-auth-token": "[]",
                 "x-auth-token-corrente": "null", "lista-opzioni-notifiche": "{}"}
         hdr = {"User-Agent": USER_AGENT, "Content-Type": "Application/json",
-               "Authorization": "Bearer " + access, "Accept": "Application/json"}
+               "Authorization": "Bearer " + access, "Accept": "Application/json", **CLIENT_HEADERS}
         async with self._s.post(ENDPOINT + "login", headers=hdr, json=body, timeout=TIMEOUT) as r:
             j = await r.json(content_type=None)
         try:
@@ -120,7 +122,7 @@ class DidupApi:
     def _headers(self, access: str, token: str) -> dict:
         return {"Content-Type": "Application/json", "Authorization": "Bearer " + access,
                 "Accept": "Application/json", "x-cod-min": self._codice, "x-auth-token": token,
-                "User-Agent": USER_AGENT}
+                "User-Agent": USER_AGENT, **CLIENT_HEADERS}
 
     async def _profilo(self, access: str, token: str) -> dict:
         async with self._s.get(ENDPOINT + "profilo", headers=self._headers(access, token), timeout=TIMEOUT) as r:
