@@ -92,7 +92,7 @@ Se l'integrazione risponde «Cartella non consentita», la cartella non esiste o
 La card ha la vista **`pdf`**: scegli un dispositivo «Report …» e compare **un pulsante per ogni alunno** (con pagine e orario
 di produzione) che apre l'ultimo PDF prodotto nel browser o nell'app. Il PDF resta nella cartella privata: la card chiede a
 Home Assistant un link firmato che vale pochi minuti (`auth/sign_path`), quindi serve aver fatto il login e il file non
-diventa mai pubblico. L'indirizzo `/api/didup/pdf/<report>/<alunno>` serve solo i PDF prodotti dall'integrazione, mai un
+diventa mai pubblico. Nell'**app di Home Assistant** (WebView, senza schede nuove né lettore PDF) il tocco scarica il file nei download del telefono e, sotto i pulsanti, compare per 4 minuti un link da toccare se il download non parte. L'indirizzo `/api/didup/pdf/<report>/<alunno>` serve solo i PDF prodotti dall'integrazione, mai un
 percorso scelto da chi chiede, e richiede l'autenticazione.
 
 ```yaml
