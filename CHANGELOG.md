@@ -1,5 +1,8 @@
 # Changelog
 
+## 0.6.3
+- Argo ha spostato l'API dei dati da `www.portaleargo.it/appfamiglia/api/rest/` (ora risponde 503) a `didattica.portaleargo.it/famiglia/api/`, e il nuovo indirizzo vuole le intestazioni `os-type` e `argo-client-version` che manda anche il sito web. Senza questo fix la lettura falliva sempre («lettura fallita: unexpected character…») e tutte le entità diventavano non disponibili. Il login OAuth e il formato dei dati sono invariati.
+
 ## 0.6.2
 - Nel PDF non compaiono più i promemoria di oggi (restano nelle entità e nel calendario): il report è per quello che deve ancora venire, e una verifica di stamattina non serve più nel pomeriggio.
 
