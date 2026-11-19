@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.7.1
+- **Correzione della 0.7.0:** nella card erano sparite per errore le viste «Note», «Comunicazioni», «Programma» e «PDF» (al loro posto compariva `this[("_v_" + v)] is not a function`). Ripristinate come nella 0.6.4; le viste Voti e quadrimestri della 0.7.0 restano.
+- Nuovi test che controllano che ogni vista della card abbia il suo metodo e che la versione della card segua quella del manifest.
+
 ## 0.7.0
 - Vista «Voti» della card: mostra **tutti i voti dell'anno** (prima solo gli ultimi 10, con tetto «elementi»), divisi per quadrimestre con il corrente in alto. Ogni quadrimestre si comprime/espande con un tocco sulla testata: è aperto di default solo quello in corso (così nel secondo quadrimestre i voti del primo si riguardano «esplodendolo»); la testata mostra sempre la media e le medie di materia.
 - Per ogni quadrimestre la **media generale** e la **media di ogni materia** (con il numero di voti). La media generale è la media delle medie di materia, come in Argo: sui dati reali coincide con quella di Argo. Voti senza valore numerico o che non fanno media sono esclusi.
