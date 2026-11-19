@@ -1,12 +1,12 @@
 /* DidUP Famiglia (Argo) — card per Lovelace. Nessuna dipendenza: web component nativo + ha-form dell'editor.
  * Trova da sola le entità dell'alunno scelto (dispositivo) tramite la translation_key, quindi funziona
  * anche se l'utente rinomina gli entity_id. Stile neutro: usa solo le variabili del tema di Home Assistant. */
-const DIDUP_CARD_VERSION = "0.6.4";
+const DIDUP_CARD_VERSION = "0.7.0";
 
 const T = {
   it: {
     oggi: "Oggi", domani: "Domani", fra_n: "fra {n} giorni", nessun_compito: "Nessun compito in programma",
-    nessun_promemoria: "Nessun promemoria", nessun_voto: "Nessun voto", nessuna_nota: "Nessuna nota",
+    nessun_promemoria: "Nessun promemoria", nessun_voto: "Nessun voto", q1: "Primo quadrimestre", q2: "Secondo quadrimestre", media_gen: "Media generale", n_voti: "{n} voti", ed_medie: "Medie per quadrimestre", nessuna_nota: "Nessuna nota",
     nessuna_comunicazione: "Nessuna comunicazione", non_attiva: "Funzione non attivata nelle opzioni dell'integrazione.",
     nessun_alunno: "Nessun alunno trovato: configura l'integrazione DidUP.", media: "Media",
     compiti: "Compiti", promemoria: "Promemoria e verifiche", voti: "Voti", note: "Note disciplinari",
@@ -19,7 +19,7 @@ const T = {
   },
   en: {
     oggi: "Today", domani: "Tomorrow", fra_n: "in {n} days", nessun_compito: "No homework scheduled",
-    nessun_promemoria: "No reminders", nessun_voto: "No grades", nessuna_nota: "No notes",
+    nessun_promemoria: "No reminders", nessun_voto: "No grades", q1: "First term", q2: "Second term", media_gen: "Overall average", n_voti: "{n} grades", ed_medie: "Averages per term", nessuna_nota: "No notes",
     nessuna_comunicazione: "No notices", non_attiva: "Feature not enabled in the integration options.",
     nessun_alunno: "No student found: set up the DidUP integration.", media: "Average",
     compiti: "Homework", promemoria: "Reminders and tests", voti: "Grades", note: "Disciplinary notes",
@@ -88,6 +88,9 @@ ha-card { padding: 16px; }
 .pdfbtn.err { border-color: var(--error-color, #db4437); }
 .pdfok { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--primary-color); border-radius: 10px; color: var(--primary-text-color); }
 .pdfok a { color: var(--primary-color); font-weight: 600; overflow-wrap: anywhere; display: block; margin-top: 4px; }
+.periodo + .periodo { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--divider-color); }
+.ph { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; font-size: 1.05rem; }
+.mats { margin: 6px 0 10px; }
 .alunno + .alunno { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--divider-color); }
 .bad { --tc: var(--error-color, #db4437); } .warn { --tc: var(--warning-color, #ffa000); } .info { --tc: var(--primary-color, #03a9f4); }
 .giorno { margin-top: 14px; border-left: 3px solid var(--tc); border-radius: 3px; padding-left: 10px; }
@@ -267,70 +270,33 @@ class DidupCard extends HTMLElement {
   }
 
   _v_voti(t) {
+    // Tutti i voti dell'anno (senza tetto), divisi per quadrimestre, ciascuno con la media generale e quelle di materia.
     const h = this._hass, c = this._config;
     const ent = t.ent.ultimo_voto;
     if (!ent) return this._inattiva();
     const l = (h.states[ent]?.attributes.ultimi) || [];
-    if (!l.length) return this._vuoto("nessun_voto");
-    return l.slice(0, c.max_elementi).map((x) => {
+    const per = (c.mostra_medie !== false && t.ent.media_generale && h.states[t.ent.media_generale]?.attributes.periodi) || [];
+    const riga = (x) => {
       const sec = [shortDate(h, x.data), x.tipo, c.mostra_docente ? x.docente : ""].filter(Boolean).join(" · ");
       return `<div class="riga"><span class="voto ${votoClasse(x.valore)}">${esc(x.voto)}</span><div class="corpo"><span class="mat">${esc(x.materia)}</span>` +
         `<div class="sec">${esc(sec)}</div>${!c.compatta && x.descrizione ? `<div class="txt">${esc(x.descrizione)}</div>` : ""}</div></div>`;
-    }).join("");
-  }
-
-  _v_note(t) {
-    const h = this._hass, c = this._config;
-    const l = this._lista(t, "note_disciplinari");
-    if (l === null) return this._inattiva();
-    if (!l.length) return this._vuoto("nessuna_nota");
-    return l.slice(0, c.max_elementi).map((x) => {
-      const sec = [shortDate(h, x.data), c.mostra_docente ? x.docente : ""].filter(Boolean).join(" · ");
-      return `<div class="riga"><div class="corpo"><div class="sec">${esc(sec)}</div><div class="txt">${esc(x.testo)}</div></div></div>`;
-    }).join("");
-  }
-
-  _v_comunicazioni(t) {
-    const h = this._hass, c = this._config;
-    const l = this._lista(t, "comunicazioni");
-    if (l === null) return this._inattiva();
-    if (!l.length) return this._vuoto("nessuna_comunicazione");
-    return l.slice(0, c.max_elementi).map((x) => {
-      const sec = [shortDate(h, x.data), x.categoria, c.mostra_docente ? x.autore : ""].filter(Boolean).join(" · ");
-      const testo = c.compatta ? "" : `<div class="txt">${esc(x.testo)}</div>`;
-      return `<div class="riga"><div class="corpo"><div class="sec">${esc(sec)}</div>${testo || `<div class="txt">${esc(x.testo.slice(0, 90))}${x.testo.length > 90 ? "…" : ""}</div>`}</div></div>`;
-    }).join("");
-  }
-
-  _v_programma(t) {
-    const h = this._hass, E = t.ent;
-    if (!E.automatico_report) return `<div class="vuoto">${esc(tr(h, "non_report"))}</div>`;
-    const lang = h.language || "en";
-    const nome = (i) => cap(new Intl.DateTimeFormat(lang, { weekday: "long" }).format(new Date(2024, 0, 1 + i))); // 1 gennaio 2024 = lunedì
-    const auto = h.states[E.automatico_report]?.state === "on";
-    let html = `<div class="prog prog-master"><label><input type="checkbox" data-sw="${esc(E.automatico_report)}" ${auto ? "checked" : ""}> ${esc(tr(h, "auto"))}</label></div>`;
-    GIORNI_KEY.forEach((g, i) => {
-      const on = h.states[E["attivo_" + g]]?.state === "on";
-      const ora = (h.states[E["ora_" + g]]?.state || "").slice(0, 5);
-      html += `<div class="prog ${on && auto ? "" : "spento"}"><label><input type="checkbox" data-sw="${esc(E["attivo_" + g])}" ${on ? "checked" : ""}> ${esc(nome(i))}</label>` +
-        `<input type="time" data-t="${esc(E["ora_" + g])}" value="${esc(ora)}" ${on ? "" : "disabled"}></div>`;
-    });
-    return html;
-  }
-
-  _v_pdf(t) {
-    const h = this._hass, E = t.ent;
-    if (!E.automatico_report) return `<div class="vuoto">${esc(tr(h, "non_report"))}</div>`;
-    const a = (E.genera_report && h.states[E.genera_report]?.attributes) || {};
-    const files = (a.files || []).filter((f) => f.slug && a.id);
-    if (!files.length) return this._vuoto("nessun_pdf");
-    const quando = a.quando ? new Intl.DateTimeFormat(h.language || "en", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(a.quando)) : "";
-    return `<div class="pdfs">` + files.map((f) =>
-      `<button class="pdfbtn" data-nome="${esc(String(f.file || "").split("/").pop() || f.slug + ".pdf")}" data-pdf="/api/didup/pdf/${encodeURIComponent(a.id)}/${encodeURIComponent(f.slug)}">` +
-      `<ha-icon icon="mdi:file-pdf-box"></ha-icon><span class="pn">${esc(f.alunno)}</span>` +
-      `<small>${esc(tr(h, "pagine_n").replace("{n}", f.pagine))}${quando ? " · " + esc(quando) : ""}</small></button>`).join("") + `</div>` +
-      (this._link && Date.now() < this._link.fino
-        ? `<div class="pdfok">${esc(tr(h, "pronto"))} <a href="${esc(this._link.url)}" download="${esc(this._link.nome)}">${esc(this._link.nome)}</a></div>` : "");
+    };
+    if (!per.length) return l.length ? l.map(riga).join("") : this._vuoto("nessun_voto");
+    const d = new Date(), oggi = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+    const num = new Intl.NumberFormat(h.language || "en", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    // il quadrimestre in corso per primo; quelli non ancora iniziati e senza voti non si mostrano
+    const blocchi = per.map((p, i) => ({ p, i, v: l.filter((x) => x.periodo === p.id) })).filter((b) => b.v.length || b.p.inizio <= oggi).reverse();
+    const fuori = l.filter((x) => !per.some((p) => p.id === x.periodo));
+    if (!blocchi.length && !fuori.length) return this._vuoto("nessun_voto");
+    return blocchi.map(({ p, i, v }) => {
+      const nome = i < 2 ? tr(h, i ? "q2" : "q1") : p.nome;
+      const media = p.media != null ? `<span class="voto ${votoClasse(p.media)}" title="${esc(tr(h, "media_gen"))}">${esc(num.format(p.media))}</span>` : "";
+      const mats = (p.materie || []).map((m) => `<span class="chip${m.media < 6 ? " bad" : ""}">${esc(m.materia)} <b>${esc(num.format(m.media))}</b> · ${m.n}</span>`).join("");
+      return `<div class="periodo"><div class="ph"><span>${esc(nome)}</span>${media}</div>` +
+        (p.n_voti ? `<div class="sec">${esc(tr(h, "media_gen"))} · ${esc(tr(h, "n_voti").replace("{n}", p.n_voti))}</div>` : "") +
+        (mats ? `<div class="mats">${mats}</div>` : "") +
+        (v.length ? v.map(riga).join("") : this._vuoto("nessun_voto")) + `</div>`;
+    }).join("") + fuori.map(riga).join("");
   }
 
   _v_riepilogo(t) {
@@ -381,13 +347,14 @@ class DidupCardEditor extends HTMLElement {
       { name: "raggruppa", selector: { select: { mode: "dropdown", options: [{ value: "giorno", label: tr(h, "giorno") }, { value: "materia", label: tr(h, "materia") }] } } },
       { name: "mostra_docente", selector: { boolean: {} } },
       { name: "compatta", selector: { boolean: {} } },
+      { name: "mostra_medie", selector: { boolean: {} } },
     ];
   }
   _draw() {
     if (!this._hass || !this._config) return;
     if (!this._form) {
       this._form = document.createElement("ha-form");
-      this._form.computeLabel = (s) => tr(this._hass, { device_id: "ed_device", vista: "ed_vista", titolo: "ed_titolo", max_elementi: "ed_max", mostra_docente: "ed_docente", compatta: "ed_compatta", raggruppa: "ed_raggruppa" }[s.name]);
+      this._form.computeLabel = (s) => tr(this._hass, { device_id: "ed_device", vista: "ed_vista", titolo: "ed_titolo", max_elementi: "ed_max", mostra_docente: "ed_docente", compatta: "ed_compatta", raggruppa: "ed_raggruppa", mostra_medie: "ed_medie" }[s.name]);
       this._form.addEventListener("value-changed", (ev) => {
         const cfg = { ...ev.detail.value };
         Object.keys(cfg).forEach((k) => (cfg[k] === "" || cfg[k] === undefined) && delete cfg[k]);
@@ -397,7 +364,7 @@ class DidupCardEditor extends HTMLElement {
     }
     this._form.hass = this._hass;
     this._form.schema = this._schema();
-    this._form.data = { vista: "riepilogo", max_elementi: 10, mostra_docente: true, compatta: false, raggruppa: "giorno", ...this._config };
+    this._form.data = { vista: "riepilogo", max_elementi: 10, mostra_docente: true, compatta: false, raggruppa: "giorno", mostra_medie: true, ...this._config };
   }
 }
 
