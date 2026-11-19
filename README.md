@@ -29,7 +29,7 @@ Ogni funzione crea entità solo se la scegli. Per ogni alunno c'è un dispositiv
 | Compiti | `sensor.<alunno>_compiti` (numero; elenco negli attributi `elementi`) |
 | Promemoria e verifiche | `sensor.<alunno>_promemoria` |
 | Voti | `sensor.<alunno>_ultimo_voto` (attributi: materia, data, tipo, docente, ultimi 10) |
-| Media generale | `sensor.<alunno>_media_generale` (attributo `periodi`: media generale e medie di materia per quadrimestre) |
+| Media generale | `sensor.<alunno>_media_generale` |
 | Note disciplinari | `sensor.<alunno>_note_disciplinari` |
 | Comunicazioni | `sensor.<alunno>_comunicazioni` |
 | Calendario | `calendar.<alunno>_calendario` (compiti a giornata intera, verifiche con orario) |
