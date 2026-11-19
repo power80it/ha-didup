@@ -56,8 +56,8 @@ class ListaSensor(DidupEntity, SensorEntity):
 class UltimoVotoSensor(DidupEntity, SensorEntity):
     _attr_translation_key = "ultimo_voto"
     _attr_icon = "mdi:school"
-    # L'elenco di tutti i voti dell'anno può superare i 16 KB del registro storico: non va registrato.
-    _unrecorded_attributes = frozenset({"ultimi"})
+    # Tutti i voti dell'anno e le medie per quadrimestre possono superare i 16 KB del registro storico: non vanno registrati.
+    _unrecorded_attributes = frozenset({"ultimi", "periodi"})
 
     def __init__(self, coordinator, alunno) -> None:
         super().__init__(coordinator, alunno)
@@ -71,7 +71,8 @@ class UltimoVotoSensor(DidupEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         v = self.dati.get("voti") or []
-        return {"tipo": "ultimo_voto", **(v[0] if v else {}), "ultimi": v}
+        return {"tipo": "ultimo_voto", **(v[0] if v else {}), "ultimi": v,
+                "periodi": self.dati.get("medie_periodi") or []}
 
 
 class MediaSensor(DidupEntity, SensorEntity):
@@ -88,12 +89,9 @@ class MediaSensor(DidupEntity, SensorEntity):
     def native_value(self) -> float | None:
         return self.dati.get("media")
 
-    # le medie per quadrimestre sono ricalcolate a ogni lettura: inutile registrarle nello storico
-    _unrecorded_attributes = frozenset({"periodi"})
-
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        return {"tipo": "media_generale", "periodi": self.dati.get("medie_periodi") or []}
+        return {"tipo": "media_generale"}
 
 
 class UltimoAggiornamentoSensor(SensorEntity):
