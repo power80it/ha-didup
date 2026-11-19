@@ -56,6 +56,8 @@ class ListaSensor(DidupEntity, SensorEntity):
 class UltimoVotoSensor(DidupEntity, SensorEntity):
     _attr_translation_key = "ultimo_voto"
     _attr_icon = "mdi:school"
+    # L'elenco di tutti i voti dell'anno può superare i 16 KB del registro storico: non va registrato.
+    _unrecorded_attributes = frozenset({"ultimi"})
 
     def __init__(self, coordinator, alunno) -> None:
         super().__init__(coordinator, alunno)
@@ -69,7 +71,7 @@ class UltimoVotoSensor(DidupEntity, SensorEntity):
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
         v = self.dati.get("voti") or []
-        return {"tipo": "ultimo_voto", **(v[0] if v else {}), "ultimi": v[:10]}
+        return {"tipo": "ultimo_voto", **(v[0] if v else {}), "ultimi": v}
 
 
 class MediaSensor(DidupEntity, SensorEntity):
