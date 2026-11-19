@@ -88,9 +88,12 @@ class MediaSensor(DidupEntity, SensorEntity):
     def native_value(self) -> float | None:
         return self.dati.get("media")
 
+    # le medie per quadrimestre sono ricalcolate a ogni lettura: inutile registrarle nello storico
+    _unrecorded_attributes = frozenset({"periodi"})
+
     @property
     def extra_state_attributes(self) -> dict[str, Any]:
-        return {"tipo": "media_generale"}
+        return {"tipo": "media_generale", "periodi": self.dati.get("medie_periodi") or []}
 
 
 class UltimoAggiornamentoSensor(SensorEntity):
