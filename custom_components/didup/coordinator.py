@@ -105,6 +105,7 @@ class DidupCoordinator(DataUpdateCoordinator[dict[str, dict[str, Any]]]):
                 "note": parsing.note(dash),
                 "bacheca": parsing.bacheca(dash),
                 "media": parsing.media_generale(dash),
+                "medie_periodi": parsing.medie_periodi(dash),
             }
         self.ultimo_ok = dt_util.utcnow()
         self._aggiorna_alunni_noti(data)
