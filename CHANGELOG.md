@@ -1,7 +1,7 @@
 # Changelog
 
 ## 0.7.0
-- Vista «Voti» della card: mostra **tutti i voti dell'anno** (prima solo gli ultimi 10, con tetto «elementi»), divisi per quadrimestre con il corrente in alto.
+- Vista «Voti» della card: mostra **tutti i voti dell'anno** (prima solo gli ultimi 10, con tetto «elementi»), divisi per quadrimestre con il corrente in alto. Ogni quadrimestre si comprime/espande con un tocco sulla testata: è aperto di default solo quello in corso (così nel secondo quadrimestre i voti del primo si riguardano «esplodendolo»); la testata mostra sempre la media e le medie di materia.
 - Per ogni quadrimestre la **media generale** e la **media di ogni materia** (con il numero di voti). La media generale è la media delle medie di materia, come in Argo: sui dati reali coincide con quella di Argo. Voti senza valore numerico o che non fanno media sono esclusi.
 - `sensor.<alunno>_media_generale` ha il nuovo attributo `periodi` (medie per quadrimestre); `sensor.<alunno>_ultimo_voto` ha in `ultimi` tutti i voti, ciascuno con `periodo` e `fa_media`. Entrambi gli elenchi non vanno nello storico del registratore (possono superare i 16 KB).
 - Nuova opzione della card `mostra_medie` (default sì).
