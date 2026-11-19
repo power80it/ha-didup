@@ -45,7 +45,7 @@ dashboard: *Aggiungi card → DidUP*. Dall'editor visivo scegli:
 
 - **Alunno** (se lo lasci vuoto la card li mostra tutti);
 - **Vista**: riepilogo, compiti, promemoria e verifiche, voti, note, comunicazioni;
-- **Voti**: **tutti i voti dell'anno**, divisi per quadrimestre (il corrente in alto); per ciascun quadrimestre la **media generale** e la **media di ogni materia** (con il numero di voti). La media generale è la media delle medie di materia, come in Argo; i voti senza valore numerico o che «non fanno media» non contano. Si disattiva con «Medie per quadrimestre» (`mostra_medie: false`); la vista non ha tetto di elementi;
+- **Voti**: **tutti i voti dell'anno**, divisi per quadrimestre (il corrente in alto e aperto; gli altri si aprono con un tocco sulla testata, che mostra sempre la media e le medie di materia); per ciascun quadrimestre la **media generale** e la **media di ogni materia** (con il numero di voti). La media generale è la media delle medie di materia, come in Argo; i voti senza valore numerico o che «non fanno media» non contano. Si disattiva con «Medie per quadrimestre» (`mostra_medie: false`); la vista non ha tetto di elementi;
 - **Programma**: pannello per attivare i giorni e impostare l'orario di ogni giorno di un report (scegli il dispositivo «Report …»);
 - **PDF**: un pulsante per ogni alunno che apre l'ultimo PDF prodotto (scegli il dispositivo «Report …»), vedi «Aprire il PDF dal browser o dall'app»;
 - titolo, numero di elementi, raggruppamento dei compiti (per giorno o per materia), docente sì/no, vista compatta.
