@@ -78,8 +78,48 @@ def promemoria(dash: dict, oggi: dt.date, includi_oggi: bool = True) -> list[dic
     return sorted(out, key=lambda x: (x["data"], x["ora"]))
 
 
+NOMI_PERIODO = ("Primo quadrimestre", "Secondo quadrimestre")
+
+
+def periodi(dash: dict) -> list[dict]:
+    """I periodi dell'anno (quadrimestri) da `listaPeriodi`, in ordine di data, senza la voce «Intero Anno».
+
+    [{'id': '1Q', 'nome': 'Primo quadrimestre', 'inizio': '2026-09-14', 'fine': '2027-01-31'}, ...]
+    Argo chiama «scrutinio finale» il secondo quadrimestre: i nomi si danno per posizione."""
+    out = []
+    for p in dash.get("listaPeriodi") or []:
+        try:
+            ini = dt.date.fromisoformat(str(p.get("datInizio"))[:10])
+            fin = dt.date.fromisoformat(str(p.get("datFine"))[:10])
+        except ValueError:
+            continue
+        if p.get("codPeriodo") == "*" or p.get("pkPeriodo") == "*":
+            continue  # «Intero Anno»
+        out.append({"id": str(p.get("codPeriodo") or ""), "inizio": ini.isoformat(), "fine": fin.isoformat(),
+                    "_desc": (p.get("descrizione") or "").strip().capitalize()})
+    out.sort(key=lambda x: x["inizio"])
+    for i, p in enumerate(out):
+        p["nome"] = NOMI_PERIODO[i] if i < len(NOMI_PERIODO) else (p.pop("_desc") or p["id"])
+        p.pop("_desc", None)
+    return out
+
+
+def periodo_di(per: list[dict], giorno: str) -> str:
+    """Id del periodo che contiene la data (ISO), '' se nessuno."""
+    for p in per:
+        if p["inizio"] <= giorno <= p["fine"]:
+            return p["id"]
+    return ""
+
+
+def _conta_nella_media(v: dict) -> bool:
+    """Un voto «non fa media» se Argo lo segna (faMenoMedia valorizzato con S/1/true)."""
+    return str(v.get("faMenoMedia") or "").strip().upper() not in ("S", "Y", "1", "TRUE")
+
+
 def voti(dash: dict) -> list[dict]:
     """Tutti i voti, dal più recente."""
+    per = periodi(dash)
     out = []
     for v in dash.get("voti", []):
         try:
@@ -93,8 +133,31 @@ def voti(dash: dict) -> list[dict]:
                     "voto": voto_leggibile(valore), "valore": valore,
                     "tipo": TIPO_VOTO.get(v.get("codVotoPratico"), ""),
                     "descrizione": f"{desc}\n{comm}" if desc and comm and desc != comm else (desc or comm),
-                    "docente": (v.get("docente") or "").strip().title()})
+                    "docente": (v.get("docente") or "").strip().title(),
+                    "periodo": periodo_di(per, (v.get("datGiorno") or "")[:10]),
+                    "fa_media": _conta_nella_media(v)})
     return sorted(out, key=lambda x: x["data"], reverse=True)
+
+
+def medie_periodi(dash: dict) -> list[dict]:
+    """Medie per quadrimestre, calcolate dai voti (come Argo: media generale = media delle medie di materia).
+
+    [{'id','nome','inizio','fine','media': 7.36|None,'n_voti': 22,
+      'materie': [{'materia': 'Geografia', 'media': 8.5, 'n': 2}, ...]}]  (materie dalla media più alta)
+    Solo i voti numerici che fanno media; i periodi senza voti hanno `media: None` e nessuna materia."""
+    tutti = voti(dash)
+    out = []
+    for p in periodi(dash):
+        per_materia: dict[str, list[float]] = {}
+        for v in tutti:
+            if v["periodo"] == p["id"] and v["fa_media"]:
+                per_materia.setdefault(v["materia"], []).append(v["valore"])
+        materie = sorted(({"materia": m, "media": round(sum(x) / len(x), 2), "n": len(x)} for m, x in per_materia.items()),
+                         key=lambda x: (-x["media"], x["materia"]))
+        medie_m = [sum(x) / len(x) for x in per_materia.values()]
+        out.append({**p, "media": round(sum(medie_m) / len(medie_m), 2) if medie_m else None,
+                    "n_voti": sum(len(x) for x in per_materia.values()), "materie": materie})
+    return out
 
 
 def note(dash: dict) -> list[dict]:
