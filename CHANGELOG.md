@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.7.0
+- Vista «Voti» della card: mostra **tutti i voti dell'anno** (prima solo gli ultimi 10, con tetto «elementi»), divisi per quadrimestre con il corrente in alto.
+- Per ogni quadrimestre la **media generale** e la **media di ogni materia** (con il numero di voti). La media generale è la media delle medie di materia, come in Argo: sui dati reali coincide con quella di Argo. Voti senza valore numerico o che non fanno media sono esclusi.
+- `sensor.<alunno>_media_generale` ha il nuovo attributo `periodi` (medie per quadrimestre); `sensor.<alunno>_ultimo_voto` ha in `ultimi` tutti i voti, ciascuno con `periodo` e `fa_media`. Entrambi gli elenchi non vanno nello storico del registratore (possono superare i 16 KB).
+- Nuova opzione della card `mostra_medie` (default sì).
+
 ## 0.6.4
 - Card, vista PDF: nell'app di Home Assistant (Android e iOS) il pulsante del PDF scarica il file invece di aprire una scheda che l'app non gestisce; sotto i pulsanti compare per 4 minuti un link da toccare se il download automatico non parte. Nel browser il comportamento è invariato (nuova scheda).
 
