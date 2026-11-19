@@ -1,7 +1,7 @@
 /* DidUP Famiglia (Argo) — card per Lovelace. Nessuna dipendenza: web component nativo + ha-form dell'editor.
  * Trova da sola le entità dell'alunno scelto (dispositivo) tramite la translation_key, quindi funziona
  * anche se l'utente rinomina gli entity_id. Stile neutro: usa solo le variabili del tema di Home Assistant. */
-const DIDUP_CARD_VERSION = "0.7.0";
+const DIDUP_CARD_VERSION = "0.7.1";
 
 const T = {
   it: {
@@ -310,6 +310,60 @@ class DidupCard extends HTMLElement {
         (mats ? `<div class="mats">${mats}</div>` : "") +
         (aperto ? (v.length ? v.map(riga).join("") : this._vuoto("nessun_voto")) : "") + `</div>`;
     }).join("") + fuori.map(riga).join("");
+  }
+
+  _v_note(t) {
+    const h = this._hass, c = this._config;
+    const l = this._lista(t, "note_disciplinari");
+    if (l === null) return this._inattiva();
+    if (!l.length) return this._vuoto("nessuna_nota");
+    return l.slice(0, c.max_elementi).map((x) => {
+      const sec = [shortDate(h, x.data), c.mostra_docente ? x.docente : ""].filter(Boolean).join(" · ");
+      return `<div class="riga"><div class="corpo"><div class="sec">${esc(sec)}</div><div class="txt">${esc(x.testo)}</div></div></div>`;
+    }).join("");
+  }
+
+  _v_comunicazioni(t) {
+    const h = this._hass, c = this._config;
+    const l = this._lista(t, "comunicazioni");
+    if (l === null) return this._inattiva();
+    if (!l.length) return this._vuoto("nessuna_comunicazione");
+    return l.slice(0, c.max_elementi).map((x) => {
+      const sec = [shortDate(h, x.data), x.categoria, c.mostra_docente ? x.autore : ""].filter(Boolean).join(" · ");
+      const testo = c.compatta ? "" : `<div class="txt">${esc(x.testo)}</div>`;
+      return `<div class="riga"><div class="corpo"><div class="sec">${esc(sec)}</div>${testo || `<div class="txt">${esc(x.testo.slice(0, 90))}${x.testo.length > 90 ? "…" : ""}</div>`}</div></div>`;
+    }).join("");
+  }
+
+  _v_programma(t) {
+    const h = this._hass, E = t.ent;
+    if (!E.automatico_report) return `<div class="vuoto">${esc(tr(h, "non_report"))}</div>`;
+    const lang = h.language || "en";
+    const nome = (i) => cap(new Intl.DateTimeFormat(lang, { weekday: "long" }).format(new Date(2024, 0, 1 + i))); // 1 gennaio 2024 = lunedì
+    const auto = h.states[E.automatico_report]?.state === "on";
+    let html = `<div class="prog prog-master"><label><input type="checkbox" data-sw="${esc(E.automatico_report)}" ${auto ? "checked" : ""}> ${esc(tr(h, "auto"))}</label></div>`;
+    GIORNI_KEY.forEach((g, i) => {
+      const on = h.states[E["attivo_" + g]]?.state === "on";
+      const ora = (h.states[E["ora_" + g]]?.state || "").slice(0, 5);
+      html += `<div class="prog ${on && auto ? "" : "spento"}"><label><input type="checkbox" data-sw="${esc(E["attivo_" + g])}" ${on ? "checked" : ""}> ${esc(nome(i))}</label>` +
+        `<input type="time" data-t="${esc(E["ora_" + g])}" value="${esc(ora)}" ${on ? "" : "disabled"}></div>`;
+    });
+    return html;
+  }
+
+  _v_pdf(t) {
+    const h = this._hass, E = t.ent;
+    if (!E.automatico_report) return `<div class="vuoto">${esc(tr(h, "non_report"))}</div>`;
+    const a = (E.genera_report && h.states[E.genera_report]?.attributes) || {};
+    const files = (a.files || []).filter((f) => f.slug && a.id);
+    if (!files.length) return this._vuoto("nessun_pdf");
+    const quando = a.quando ? new Intl.DateTimeFormat(h.language || "en", { weekday: "short", day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" }).format(new Date(a.quando)) : "";
+    return `<div class="pdfs">` + files.map((f) =>
+      `<button class="pdfbtn" data-nome="${esc(String(f.file || "").split("/").pop() || f.slug + ".pdf")}" data-pdf="/api/didup/pdf/${encodeURIComponent(a.id)}/${encodeURIComponent(f.slug)}">` +
+      `<ha-icon icon="mdi:file-pdf-box"></ha-icon><span class="pn">${esc(f.alunno)}</span>` +
+      `<small>${esc(tr(h, "pagine_n").replace("{n}", f.pagine))}${quando ? " · " + esc(quando) : ""}</small></button>`).join("") + `</div>` +
+      (this._link && Date.now() < this._link.fino
+        ? `<div class="pdfok">${esc(tr(h, "pronto"))} <a href="${esc(this._link.url)}" download="${esc(this._link.nome)}">${esc(this._link.nome)}</a></div>` : "");
   }
 
   _v_riepilogo(t) {
