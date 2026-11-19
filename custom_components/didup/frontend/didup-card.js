@@ -89,7 +89,9 @@ ha-card { padding: 16px; }
 .pdfok { margin-top: 10px; padding: 10px 12px; border: 1px solid var(--primary-color); border-radius: 10px; color: var(--primary-text-color); }
 .pdfok a { color: var(--primary-color); font-weight: 600; overflow-wrap: anywhere; display: block; margin-top: 4px; }
 .periodo + .periodo { margin-top: 18px; padding-top: 14px; border-top: 1px solid var(--divider-color); }
-.ph { display: flex; justify-content: space-between; align-items: center; gap: 8px; font-weight: 600; font-size: 1.05rem; }
+.ph { display: flex; align-items: center; gap: 8px; font-weight: 600; font-size: 1.05rem; cursor: pointer; user-select: none; }
+.ph .pt { flex: 1; }
+.ph ha-icon { --mdc-icon-size: 22px; color: var(--secondary-text-color); }
 .mats { margin: 6px 0 10px; }
 .alunno + .alunno { margin-top: 20px; padding-top: 16px; border-top: 1px solid var(--divider-color); }
 .bad { --tc: var(--error-color, #db4437); } .warn { --tc: var(--warning-color, #ffa000); } .info { --tc: var(--primary-color, #03a9f4); }
@@ -202,6 +204,11 @@ class DidupCard extends HTMLElement {
         }
       } catch (e) { el.title = tr(h, "pdf_errore"); el.classList.add("err"); }
     }));
+    this.shadowRoot.querySelectorAll("[data-per]").forEach((el) => {
+      const apri = () => { this._aperti = this._aperti || {}; this._aperti[el.dataset.per] = el.dataset.aperto !== "1"; this._sig = null; this._render(); };
+      el.addEventListener("click", apri);
+      el.addEventListener("keydown", (e) => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); apri(); } });
+    });
     this.shadowRoot.querySelectorAll("[data-sw]").forEach((el) => el.addEventListener("change", () =>
       h.callService("switch", el.checked ? "turn_on" : "turn_off", { entity_id: el.dataset.sw })));
     this.shadowRoot.querySelectorAll("[data-t]").forEach((el) => el.addEventListener("change", () => {
@@ -288,14 +295,20 @@ class DidupCard extends HTMLElement {
     const blocchi = per.map((p, i) => ({ p, i, v: l.filter((x) => x.periodo === p.id) })).filter((b) => b.v.length || b.p.inizio <= oggi).reverse();
     const fuori = l.filter((x) => !per.some((p) => p.id === x.periodo));
     if (!blocchi.length && !fuori.length) return this._vuoto("nessun_voto");
+    // aperto di default solo il quadrimestre in corso (o, a scuole chiuse, l'ultimo con voti); un tocco sulla testata apre/chiude
+    const corrente = (blocchi.find((b) => b.p.inizio <= oggi && oggi <= b.p.fine) || blocchi.find((b) => b.v.length) || blocchi[0] || {}).p?.id;
+    this._aperti = this._aperti || {};
     return blocchi.map(({ p, i, v }) => {
+      const chiave = `${ent}|${p.id}`;
+      const aperto = chiave in this._aperti ? this._aperti[chiave] : p.id === corrente;
       const nome = i < 2 ? tr(h, i ? "q2" : "q1") : p.nome;
       const media = p.media != null ? `<span class="voto ${votoClasse(p.media)}" title="${esc(tr(h, "media_gen"))}">${esc(num.format(p.media))}</span>` : "";
       const mats = (p.materie || []).map((m) => `<span class="chip${m.media < 6 ? " bad" : ""}">${esc(m.materia)} <b>${esc(num.format(m.media))}</b> · ${m.n}</span>`).join("");
-      return `<div class="periodo"><div class="ph"><span>${esc(nome)}</span>${media}</div>` +
+      return `<div class="periodo"><div class="ph" data-per="${esc(chiave)}" data-aperto="${aperto ? 1 : 0}" role="button" tabindex="0">` +
+        `<ha-icon icon="mdi:chevron-${aperto ? "up" : "down"}"></ha-icon><span class="pt">${esc(nome)}</span>${media}</div>` +
         (p.n_voti ? `<div class="sec">${esc(tr(h, "media_gen"))} · ${esc(tr(h, "n_voti").replace("{n}", p.n_voti))}</div>` : "") +
         (mats ? `<div class="mats">${mats}</div>` : "") +
-        (v.length ? v.map(riga).join("") : this._vuoto("nessun_voto")) + `</div>`;
+        (aperto ? (v.length ? v.map(riga).join("") : this._vuoto("nessun_voto")) : "") + `</div>`;
     }).join("") + fuori.map(riga).join("");
   }
 
