@@ -282,7 +282,7 @@ class DidupCard extends HTMLElement {
     const ent = t.ent.ultimo_voto;
     if (!ent) return this._inattiva();
     const l = (h.states[ent]?.attributes.ultimi) || [];
-    const per = (c.mostra_medie !== false && t.ent.media_generale && h.states[t.ent.media_generale]?.attributes.periodi) || [];
+    const per = (c.mostra_medie !== false && h.states[ent]?.attributes.periodi) || [];
     const riga = (x) => {
       const sec = [shortDate(h, x.data), x.tipo, c.mostra_docente ? x.docente : ""].filter(Boolean).join(" · ");
       return `<div class="riga"><span class="voto ${votoClasse(x.valore)}">${esc(x.voto)}</span><div class="corpo"><span class="mat">${esc(x.materia)}</span>` +
